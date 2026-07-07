@@ -8,7 +8,7 @@ Grafana dashboard JSON and get the same layout in your terminal.
 
 ![grot demo](docs/demo.gif)
 
-> Status: pre-release, under active development. v0.1.0 coming soon.
+> Status: early release, under active development.
 
 ## Why
 
