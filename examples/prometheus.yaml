@@ -1,0 +1,86 @@
+# grot dashboard that works against ANY Prometheus — no exporters required.
+# It uses only `up` and the scrape_* metrics Prometheus attaches to every
+# target it scrapes. If your Prometheus also scrapes itself (the default
+# packaged config), swap in richer prometheus_* metrics where you like.
+#
+# Run: grot run --config examples/prometheus.yaml --prom http://localhost:9090
+title: prometheus
+theme: tokyo-night
+refresh: 10s
+range: 30m
+
+widgets:
+  # Row 1 — headline stats with trend bands.
+  - type: stat
+    title: targets up
+    unit: short
+    sparkline: true
+    grid: { x: 0, y: 0, w: 6, h: 4 }
+    queries:
+      - expr: count(up == 1)
+
+  - type: stat
+    title: targets total
+    unit: short
+    sparkline: true
+    grid: { x: 6, y: 0, w: 6, h: 4 }
+    queries:
+      - expr: count(up)
+
+  - type: stat
+    title: samples / scrape
+    unit: short
+    sparkline: true
+    grid: { x: 12, y: 0, w: 6, h: 4 }
+    queries:
+      - expr: sum(scrape_samples_scraped)
+
+  - type: stat
+    title: slowest scrape
+    unit: s
+    sparkline: true
+    grid: { x: 18, y: 0, w: 6, h: 4 }
+    queries:
+      - expr: max(scrape_duration_seconds)
+
+  # Row 2 — health gauge + per-job breakdown.
+  - type: gauge
+    title: targets healthy
+    unit: percentunit
+    min: 0
+    max: 1
+    grid: { x: 0, y: 4, w: 12, h: 6 }
+    thresholds:
+      - color: red
+      - value: 0.5
+        color: yellow
+      - value: 0.99
+        color: green
+    queries:
+      - expr: avg(up)
+
+  - type: bargauge
+    title: samples by job
+    unit: short
+    grid: { x: 12, y: 4, w: 12, h: 6 }
+    queries:
+      - expr: sum by (job) (scrape_samples_scraped)
+        legend: "{{job}}"
+
+  # Row 3 — scrape behavior over time.
+  - type: timeseries
+    title: scrape duration
+    unit: s
+    grid: { x: 0, y: 10, w: 12, h: 8 }
+    queries:
+      - expr: max by (job) (scrape_duration_seconds)
+        legend: "{{job}}"
+
+  - type: timeseries
+    title: samples scraped
+    unit: short
+    stacked: true
+    grid: { x: 12, y: 10, w: 12, h: 8 }
+    queries:
+      - expr: sum by (job) (scrape_samples_scraped)
+        legend: "{{job}}"
