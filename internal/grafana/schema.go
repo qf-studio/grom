@@ -82,6 +82,7 @@ type rawStacking struct {
 
 type rawOptions struct {
 	ReduceOptions rawReduce `json:"reduceOptions"`
+	GraphMode     string    `json:"graphMode"` // stat panels: "area" (default) | "none"
 }
 
 type rawReduce struct {

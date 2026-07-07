@@ -101,6 +101,10 @@ func convertPanel(p rawPanel) (*config.WidgetSpec, string) {
 		Reduce:     firstCalc(p.Options.ReduceOptions.Calcs),
 		Queries:    convertTargets(p.Targets),
 	}
+	// Grafana stat panels default graphMode to "area" (sparkline shown).
+	if wt == config.TypeStat {
+		spec.Sparkline = p.Options.GraphMode != "none"
+	}
 	if len(spec.Queries) == 0 {
 		return spec, fmt.Sprintf("panel %q: no usable targets", p.Title)
 	}

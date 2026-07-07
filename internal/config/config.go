@@ -46,7 +46,10 @@ type WidgetSpec struct {
 	Max        *float64    `yaml:"max"`
 	Thresholds []Threshold `yaml:"thresholds"`
 	Stacked    bool        `yaml:"stacked"`
-	Reduce     string      `yaml:"reduce"`
+	// Sparkline opts a stat widget into range queries so it renders a trend
+	// band under the value (Grafana stat graphMode: area). Stat-only.
+	Sparkline bool   `yaml:"sparkline"`
+	Reduce    string `yaml:"reduce"`
 }
 
 // Query is a single PromQL expression with an optional {{label}} legend.

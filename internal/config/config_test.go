@@ -16,6 +16,7 @@ widgets:
     title: cost
     unit: currencyUSD
     decimals: 2
+    sparkline: true
     queries:
       - expr: sum(pilot_execution_cost_usd_total)
   - type: gauge
@@ -51,6 +52,9 @@ widgets:
 	cost := d.Widgets[0]
 	if cost.Type != TypeStat || cost.Decimals == nil || *cost.Decimals != 2 {
 		t.Errorf("stat: %+v", cost)
+	}
+	if !cost.Sparkline {
+		t.Errorf("stat sparkline not parsed: %+v", cost)
 	}
 
 	g := d.Widgets[1]

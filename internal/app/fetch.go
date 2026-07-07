@@ -59,10 +59,20 @@ func FetchAll(ctx context.Context, ds datasource.Datasource, dash *config.Dashbo
 }
 
 // useRange decides whether a query runs as query_range. Time-series panels need
-// a range to draw a line; single-value panels (stat/gauge/bargauge) reduce to
-// one point and stay instant. A query may opt back into instant via Instant.
+// a range to draw a line; stat panels opt in via Sparkline (value + trend band).
+// Other single-value panels reduce to one point and stay instant. A query may
+// opt back into instant via Instant.
 func useRange(spec config.WidgetSpec, q config.Query) bool {
-	return spec.Type == config.TypeTimeSeries && !q.Instant
+	if q.Instant {
+		return false
+	}
+	switch spec.Type {
+	case config.TypeTimeSeries:
+		return true
+	case config.TypeStat:
+		return spec.Sparkline
+	}
+	return false
 }
 
 // chartWidth returns the inner chart width for a cell rect — the value

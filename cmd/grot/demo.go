@@ -79,11 +79,16 @@ func renderDemo(th theme.Theme, width int) string {
 	lastW := width - statW*3 // absorb remainder
 	statH := 6
 
+	// Every card carries a subdued trend band under the value (the live app
+	// feeds these via `sparkline: true` range queries).
 	success := widget.NewStat("success rate", "percent")
 	success.Thresholds = []widget.Threshold{
 		{Color: "red"}, {Value: fv(70), Color: "yellow"}, {Value: fv(90), Color: "green"},
 	}
-	success.SetResult(instant("rate", 66.0))
+	successGen := noisy(66, 9, 14)
+	success.SetResult(widget.QueryResult{Series: []widget.Series{
+		rangeSeries("rate", func(i int) float64 { return math.Min(successGen(i), 100) }, 60),
+	}, FetchedAt: now})
 
 	queue := widget.NewStat("queue depth", "short")
 	queue.Thresholds = []widget.Threshold{
@@ -95,10 +100,18 @@ func renderDemo(th theme.Theme, width int) string {
 	}, FetchedAt: now})
 
 	prs := widget.NewStat("active prs", "short")
-	prs.SetResult(instant("prs", 4))
+	prsGen := noisy(4, 1.6, 3)
+	prs.SetResult(widget.QueryResult{Series: []widget.Series{
+		rangeSeries("prs", func(i int) float64 { return math.Round(prsGen(i)) }, 60),
+	}, FetchedAt: now})
 
 	cost := widget.NewStat("cumulative cost", "currencyUSD")
-	cost.SetResult(instant("cost", 154.23))
+	cost.SetResult(widget.QueryResult{Series: []widget.Series{
+		// A counter's shape: wobbly but monotonic-ish climb.
+		rangeSeries("cost", func(i int) float64 {
+			return 32 + 2.05*float64(i) + 6*math.Sin(float64(i)*0.9)
+		}, 60),
+	}, FetchedAt: now})
 
 	row1 := lipgloss.JoinHorizontal(lipgloss.Top,
 		success.Render(statW, statH, th, false),

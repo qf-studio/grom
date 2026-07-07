@@ -30,6 +30,10 @@ func TestImportPilotDashboard(t *testing.T) {
 		switch w.Type {
 		case config.TypeStat:
 			stat++
+			// Every Pilot stat panel sets graphMode "none" — no sparklines.
+			if w.Sparkline {
+				t.Errorf("stat %q: graphMode none should map to sparkline=false", w.Title)
+			}
 		case config.TypeTimeSeries:
 			ts++
 		}
@@ -151,5 +155,9 @@ func TestConvertWrappedForm(t *testing.T) {
 	}
 	if len(dash.Widgets) != 1 || dash.Widgets[0].Type != config.TypeStat {
 		t.Errorf("widgets = %+v, want one stat", dash.Widgets)
+	}
+	// graphMode absent → Grafana's default "area" → sparkline on.
+	if !dash.Widgets[0].Sparkline {
+		t.Error("stat without graphMode should default to sparkline=true")
 	}
 }

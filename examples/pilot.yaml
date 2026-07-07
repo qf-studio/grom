@@ -7,35 +7,47 @@ refresh: 10s
 range: 6h
 
 widgets:
-  # Row 1 — headline stats (24-col grid, four across).
+  # Row 1 — headline stats with trend bands (24-col grid, four across).
   - type: stat
-    title: executions
-    unit: short
+    title: success rate
+    unit: percentunit
+    sparkline: true
     grid: { x: 0, y: 0, w: 6, h: 4 }
+    thresholds:
+      - color: red
+      - value: 0.8
+        color: yellow
+      - value: 0.95
+        color: green
     queries:
-      - expr: sum(pilot_executions_total)
+      - expr: pilot_success_rate
 
   - type: stat
     title: tokens
     unit: short
+    sparkline: true
     grid: { x: 6, y: 0, w: 6, h: 4 }
     queries:
       - expr: sum(pilot_tokens_consumed_total)
 
   - type: stat
-    title: cost
+    title: cost / issue
     unit: currencyUSD
     decimals: 2
+    sparkline: true
     grid: { x: 12, y: 0, w: 6, h: 4 }
     queries:
-      - expr: sum(pilot_execution_cost_usd_total)
+      # `> 0` guards the zero-denominator case: renders "no data", not +Inf.
+      - expr: sum(pilot_execution_cost_usd_total) / (sum(pilot_issues_processed_total) > 0)
 
   - type: stat
-    title: active prs
+    title: prs / session
     unit: short
+    sparkline: true
     grid: { x: 18, y: 0, w: 6, h: 4 }
     queries:
-      - expr: sum(pilot_active_prs)
+      # Raw counter = merged this daemon session (counters reset on restart).
+      - expr: sum(pilot_prs_merged_total)
 
   # Row 2 — success gauge + token breakdown bars.
   - type: gauge
