@@ -47,6 +47,43 @@ func Meter(frac float64, width int, fill, empty lipgloss.Style) string {
 	return b.String()
 }
 
+// GradientMeter renders a horizontal gauge whose filled cells sweep through
+// a color gradient left→right, btop-style:
+//
+//	████████████▓░░░░░░
+//
+// stops are hex colors (e.g. success→warning→error); the empty track uses
+// the empty style.
+func GradientMeter(frac float64, width int, stops []string, empty lipgloss.Style) string {
+	if width <= 0 {
+		return ""
+	}
+	if frac < 0 {
+		frac = 0
+	}
+	if frac > 1 {
+		frac = 1
+	}
+	filled := int(frac * float64(width))
+	if filled > width {
+		filled = width
+	}
+	styles := GradientStyles(stops, width)
+
+	var b strings.Builder
+	for i := 0; i < filled; i++ {
+		ch := "█"
+		if i == filled-1 && filled < width {
+			ch = "▓"
+		}
+		b.WriteString(styles[i].Render(ch))
+	}
+	if width-filled > 0 {
+		b.WriteString(empty.Render(strings.Repeat("░", width-filled)))
+	}
+	return b.String()
+}
+
 // HBar renders a horizontal bar (no empty track) of up to width cells with a
 // half-block cap for sub-cell resolution.
 func HBar(frac float64, width int, fill lipgloss.Style) string {

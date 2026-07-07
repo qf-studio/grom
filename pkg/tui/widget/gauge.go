@@ -62,12 +62,14 @@ func (g *Gauge) body(iw, ih int, th theme.Theme) string {
 	}
 
 	color := thresholdColor(v, g.Thresholds, th, th.Accent)
-	fill := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
-	valueStyle := fill.Bold(true)
+	valueStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Bold(true)
 
+	// Gradient stops follow the threshold colors in value order (btop-style
+	// sweep); no thresholds → dim→bright accent.
+	stops := g.gradientStops(th)
 	lines := []string{
 		render.Center(valueStyle.Render(FormatValue(v, g.Unit, g.Decimals)), iw),
-		render.Meter(frac, iw, fill, th.DimMoreStyle()),
+		render.GradientMeter(frac, iw, stops, th.DimMoreStyle()),
 	}
 
 	// Min/max scale line when there's room.
@@ -81,4 +83,17 @@ func (g *Gauge) body(iw, ih int, th theme.Theme) string {
 	}
 
 	return vCenter(strings.Join(lines, "\n"), iw, ih)
+}
+
+// gradientStops builds meter gradient stops from thresholds ordered by value
+// (base first). Without thresholds the meter sweeps dim→bright accent.
+func (g *Gauge) gradientStops(th theme.Theme) []string {
+	if len(g.Thresholds) == 0 {
+		return []string{th.Accent}
+	}
+	stops := make([]string, 0, len(g.Thresholds))
+	for _, t := range g.Thresholds {
+		stops = append(stops, th.ResolveColor(t.Color))
+	}
+	return stops
 }

@@ -53,17 +53,19 @@ func (s *Stat) body(iw, ih int, th theme.Theme) string {
 	valueStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(color))
 	value := valueStyle.Render(FormatValue(v, s.Unit, s.Decimals))
 
-	lines := []string{render.Center(value, iw)}
-
-	// History sparkline when the series has a range and there's room.
+	// With history and room: value on top, braille area filling the rest
+	// (btop-style dense panel). Otherwise: centered value.
 	if len(ser.Points) > 1 && ih >= 3 {
 		vals := make([]float64, len(ser.Points))
 		for i, p := range ser.Points {
 			vals[i] = p.V
 		}
-		spark := render.Sparkline(render.NormalizeSparkline(vals, iw), iw)
-		lines = append(lines, th.DimStyle().Render(spark))
+		chartRows := ih - 1
+		gradient := render.GradientStyles([]string{render.Dim(color, 0.45), color}, chartRows)
+		rows := render.BrailleArea(vals, iw, chartRows, gradient)
+		lines := append([]string{render.Center(value, iw)}, rows...)
+		return strings.Join(lines, "\n")
 	}
 
-	return vCenter(strings.Join(lines, "\n"), iw, ih)
+	return vCenter(render.Center(value, iw), iw, ih)
 }
