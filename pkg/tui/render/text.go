@@ -7,8 +7,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// PadOrTruncate ensures s is exactly targetWidth visual cells, ANSI-aware.
+// PadOrTruncate ensures s is exactly targetWidth visual cells, ANSI-aware. A
+// non-positive width yields the empty string (widgets may be laid out smaller
+// than their chrome during an aggressive resize).
 func PadOrTruncate(s string, targetWidth int) string {
+	if targetWidth <= 0 {
+		return ""
+	}
 	visualWidth := lipgloss.Width(s)
 	if visualWidth == targetWidth {
 		return s
@@ -24,6 +29,9 @@ func PadOrTruncate(s string, targetWidth int) string {
 // through with zero visible width; a CSI sequence starts at ESC (0x1b) and
 // ends at a byte in 0x40–0x7e.
 func TruncateVisual(s string, targetWidth int) string {
+	if targetWidth <= 0 {
+		return ""
+	}
 	visualWidth := lipgloss.Width(s)
 	if visualWidth <= targetWidth {
 		return s
@@ -66,6 +74,9 @@ func TruncateVisual(s string, targetWidth int) string {
 // Center centers s within width visual cells (ANSI-aware). Strings wider than
 // width are truncated.
 func Center(s string, width int) string {
+	if width <= 0 {
+		return ""
+	}
 	w := lipgloss.Width(s)
 	if w >= width {
 		return TruncateVisual(s, width)

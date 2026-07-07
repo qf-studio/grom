@@ -130,3 +130,19 @@ func TestFormatCompact(t *testing.T) {
 		}
 	}
 }
+
+// TestTextHelpersNonPositiveWidth guards against the negative-Repeat panic that
+// surfaced when a widget was laid out smaller than its chrome during a resize.
+func TestTextHelpersNonPositiveWidth(t *testing.T) {
+	for _, w := range []int{0, -1, -4, -100} {
+		if got := TruncateVisual("no data", w); got != "" {
+			t.Errorf("TruncateVisual(_, %d) = %q, want empty", w, got)
+		}
+		if got := Center("no data", w); got != "" {
+			t.Errorf("Center(_, %d) = %q, want empty", w, got)
+		}
+		if got := PadOrTruncate("no data", w); got != "" {
+			t.Errorf("PadOrTruncate(_, %d) = %q, want empty", w, got)
+		}
+	}
+}
