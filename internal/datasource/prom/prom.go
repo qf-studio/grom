@@ -51,8 +51,8 @@ func (c *Client) QueryInstant(ctx context.Context, q datasource.Instant) ([]widg
 	series := make([]widget.Series, 0, len(vec))
 	for _, s := range vec {
 		v := float64(s.Value)
-		if math.IsNaN(v) {
-			continue
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			continue // non-finite (e.g. x/0 → +Inf) is "no data", not a value
 		}
 		series = append(series, widget.Series{
 			Legend: expandLegend(q.Legend, s.Metric),
@@ -78,9 +78,14 @@ func (c *Client) QueryRange(ctx context.Context, q datasource.Range) ([]widget.S
 		// NaN samples are kept as-is: for a range they mark a gap at a real
 		// timestamp, so the chart preserves the time axis (dropping them would
 		// collapse sparse series onto one edge). Renderers skip NaN dots.
+		// ±Inf (e.g. x/0) is normalized to NaN — a gap, not a chart-breaking value.
 		pts := make([]widget.Point, 0, len(ss.Values))
 		for _, p := range ss.Values {
-			pts = append(pts, widget.Point{T: p.Timestamp.Time(), V: float64(p.Value)})
+			v := float64(p.Value)
+			if math.IsInf(v, 0) {
+				v = math.NaN()
+			}
+			pts = append(pts, widget.Point{T: p.Timestamp.Time(), V: v})
 		}
 		series = append(series, widget.Series{
 			Legend: expandLegend(q.Legend, ss.Metric),
