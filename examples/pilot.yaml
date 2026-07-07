@@ -1,0 +1,61 @@
+# grot native dashboard config — Pilot metrics from Prometheus.
+# Run: grot run --config examples/pilot.yaml --prom http://localhost:9093
+title: pilot
+theme: pilot
+refresh: 30s
+range: 15m
+
+widgets:
+  - type: stat
+    title: executions
+    unit: short
+    queries:
+      - expr: sum(pilot_executions_total)
+
+  - type: stat
+    title: tokens
+    unit: short
+    queries:
+      - expr: sum(pilot_tokens_consumed_total)
+
+  - type: stat
+    title: cost
+    unit: currencyUSD
+    decimals: 2
+    queries:
+      - expr: sum(pilot_execution_cost_usd_total)
+
+  - type: stat
+    title: active prs
+    unit: short
+    queries:
+      - expr: sum(pilot_active_prs)
+
+  - type: gauge
+    title: success rate
+    unit: percentunit
+    min: 0
+    max: 1
+    thresholds:
+      - color: red
+      - value: 0.8
+        color: yellow
+      - value: 0.95
+        color: green
+    queries:
+      - expr: pilot_success_rate
+
+  - type: timeseries
+    title: p95 execution
+    unit: s
+    queries:
+      - expr: histogram_quantile(0.95, sum(rate(pilot_execution_duration_seconds_bucket[5m])) by (le))
+        legend: p95
+
+  - type: timeseries
+    title: tokens by model
+    unit: short
+    stacked: true
+    queries:
+      - expr: sum(rate(pilot_tokens_consumed_total[5m])) by (model)
+        legend: "{{model}}"

@@ -35,7 +35,9 @@ func TestWidgetsExactDimensions(t *testing.T) {
 		{"no data", func(w Widget) { w.SetResult(QueryResult{}) }},
 		{"single point", func(w Widget) { w.SetResult(result(42)) }},
 		{"range", func(w Widget) { w.SetResult(result(1, 5, 3, 8, 2)) }},
-		{"error", func(w Widget) { w.SetError(errors.New("connection refused: very long error message that should truncate")) }},
+		{"error", func(w Widget) {
+			w.SetError(errors.New("connection refused: very long error message that should truncate"))
+		}},
 	}
 	sizes := []struct{ w, h int }{{20, 4}, {30, 6}, {50, 12}, {80, 8}}
 

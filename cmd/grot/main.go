@@ -23,6 +23,7 @@ Import your existing Grafana dashboard JSON or write a simple YAML config.`,
 	}
 
 	root.AddCommand(demoCmd())
+	root.AddCommand(runCmd())
 	root.AddCommand(&cobra.Command{
 		Use:   "version",
 		Short: "Print version",
