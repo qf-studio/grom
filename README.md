@@ -21,10 +21,12 @@ Grafana dashboard JSON and get the same layout in your terminal.
 ## Install
 
 ```bash
+brew install --cask qf-studio/tap/grot   # macOS / Linux
 go install github.com/qf-studio/grot/cmd/grot@latest
 ```
 
-Homebrew tap lands with v0.1.0.
+Prebuilt binaries for darwin/linux (amd64 + arm64) on the
+[releases page](https://github.com/qf-studio/grot/releases).
 
 ## Quick start
 

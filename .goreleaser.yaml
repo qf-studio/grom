@@ -1,0 +1,48 @@
+version: 2
+
+project_name: grot
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: ./cmd/grot
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.buildTime={{.Date}}
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs"
+      - "^chore"
+      - "^test"
+
+homebrew_casks:
+  - repository:
+      owner: qf-studio
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: https://github.com/qf-studio/grot
+    description: btop-style terminal dashboards for Prometheus & Grafana
+    # Unsigned binary: strip the quarantine bit so Gatekeeper doesn't block it.
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/grot"]
+          end
