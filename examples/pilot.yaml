@@ -3,7 +3,7 @@
 # Run: grot run --config examples/pilot.yaml --prom http://localhost:9093
 title: pilot
 theme: pilot
-refresh: 30s
+refresh: 10s
 range: 6h
 
 widgets:
