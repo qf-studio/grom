@@ -1,6 +1,6 @@
 module github.com/qf-studio/grot
 
-go 1.25.6
+go 1.25.0
 
 require (
 	github.com/charmbracelet/bubbletea v1.3.10
