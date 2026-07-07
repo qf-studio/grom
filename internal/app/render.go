@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/qf-studio/grot/internal/config"
+	"github.com/qf-studio/grot/pkg/tui/render"
 	"github.com/qf-studio/grot/pkg/tui/theme"
 	"github.com/qf-studio/grot/pkg/tui/widget"
 )
@@ -18,13 +19,15 @@ import (
 func StaticFrame(dash *config.Dashboard, widgets []widget.Widget, th theme.Theme, termW, termH int) string {
 	rects := GridLayout(dash.Widgets, termW, termH)
 	title := coalesce(dash.Title, "grot")
-	header := headerLine(title, th, formatRange(dash.Range.Duration()), false, nil)
+	header := headerLine(title, th, formatRange(dash.Range.Duration()), false, nil, termW)
 	return header + "\n" + composeGrid(widgets, rects, th, -1)
 }
 
 // headerLine is the quiet top strip: bold title, then dim clock · theme · range,
-// plus an amber stale hint when any widget's data has aged out.
-func headerLine(title string, th theme.Theme, rangeLabel string, zoomed bool, stale []string) string {
+// plus an amber stale hint when any widget's data has aged out. The line is
+// clamped to width — anything wider would wrap in the terminal and shift the
+// whole grid below it.
+func headerLine(title string, th theme.Theme, rangeLabel string, zoomed bool, stale []string, width int) string {
 	b := new(strings.Builder)
 	b.WriteString(th.AccentStyle().Bold(true).Render(" " + title))
 	meta := "  ·  " + time.Now().Format("15:04:05") + "  ·  " + th.Name + "  ·  " + rangeLabel
@@ -35,7 +38,11 @@ func headerLine(title string, th theme.Theme, rangeLabel string, zoomed bool, st
 	if len(stale) > 0 {
 		b.WriteString(th.WarningStyle().Render("  ·  stale: " + strings.Join(stale, ", ")))
 	}
-	return b.String()
+	s := b.String()
+	if width > 0 && lipgloss.Width(s) > width {
+		s = render.TruncateVisual(s, width)
+	}
+	return s
 }
 
 // composeGrid draws widgets into their rects. Rects sharing a Y form one row,

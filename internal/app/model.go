@@ -130,7 +130,7 @@ func (m Model) View() string {
 	if !m.ready {
 		return ""
 	}
-	header := headerLine(coalesce(m.dash.Title, "grot"), m.th, formatRange(m.rng), m.zoomed, m.staleNames())
+	header := headerLine(coalesce(m.dash.Title, "grot"), m.th, formatRange(m.rng), m.zoomed, m.staleNames(), m.width)
 	if m.zoomed && len(m.widgets) > 0 {
 		r := m.fetchRect(m.focus)
 		return header + "\n" + safeRender(m.widgets[m.focus], r.W, r.H, m.th, true)
