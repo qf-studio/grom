@@ -57,10 +57,20 @@ func TestPadOrTruncate(t *testing.T) {
 }
 
 func TestTruncateVisualStyled(t *testing.T) {
-	styled := lipgloss.NewStyle().Foreground(lipgloss.Color("#7eb8da")).Render("styled long content here")
+	// Raw ANSI rather than lipgloss.Render: lipgloss strips color when stdout
+	// is not a TTY (test runs), which would make this test vacuous.
+	styled := "\x1b[38;2;126;184;218mstyled long content here\x1b[0m"
 	out := TruncateVisual(styled, 12)
 	if got := lipgloss.Width(out); got != 12 {
 		t.Errorf("styled truncate: width %d, want 12", got)
+	}
+	// Truncation cuts before the string's own closing reset — the result must
+	// re-emit one so the ellipsis and following text don't inherit the style.
+	if !strings.Contains(out, "\x1b[0m") {
+		t.Errorf("styled truncate leaks open style, no reset: %q", out)
+	}
+	if !strings.HasSuffix(out, "...") {
+		t.Errorf("styled truncate missing ellipsis: %q", out)
 	}
 }
 

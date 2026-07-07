@@ -26,8 +26,9 @@ func PadOrTruncate(s string, targetWidth int) string {
 
 // TruncateVisual truncates s to targetWidth visual cells, appending "..." when
 // truncation occurs. ANSI escape sequences (lipgloss color codes) are copied
-// through with zero visible width; a CSI sequence starts at ESC (0x1b) and
-// ends at a byte in 0x40–0x7e.
+// through with zero visible width; a CSI sequence starts at ESC (0x1b), and
+// ends at a byte in 0x40–0x7e — excluding the '[' introducer itself, which is
+// in that range but marks the start of the parameter bytes.
 func TruncateVisual(s string, targetWidth int) string {
 	if targetWidth <= 0 {
 		return ""
@@ -43,16 +44,18 @@ func TruncateVisual(s string, targetWidth int) string {
 	result := ""
 	width := 0
 	inEsc := false
+	sawEsc := false
 	for _, r := range s {
 		if inEsc {
 			result += string(r)
-			if r >= 0x40 && r <= 0x7e {
+			if r != '[' && r >= 0x40 && r <= 0x7e {
 				inEsc = false
 			}
 			continue
 		}
 		if r == 0x1b {
 			inEsc = true
+			sawEsc = true
 			result += string(r)
 			continue
 		}
@@ -62,6 +65,12 @@ func TruncateVisual(s string, targetWidth int) string {
 		}
 		result += string(r)
 		width += runeWidth
+	}
+
+	// Truncation may cut the string before its closing reset — emit one so the
+	// ellipsis, padding, and whatever renders next don't inherit an open style.
+	if sawEsc {
+		result += "\x1b[0m"
 	}
 
 	for width < targetWidth-3 {
