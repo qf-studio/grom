@@ -1,20 +1,24 @@
 # grot native dashboard config — Pilot metrics from Prometheus.
+# A btop-style overview: headline stats, a gauge + bar gauge, and two charts.
 # Run: grot run --config examples/pilot.yaml --prom http://localhost:9093
 title: pilot
 theme: pilot
 refresh: 30s
-range: 15m
+range: 6h
 
 widgets:
+  # Row 1 — headline stats (24-col grid, four across).
   - type: stat
     title: executions
     unit: short
+    grid: { x: 0, y: 0, w: 6, h: 4 }
     queries:
       - expr: sum(pilot_executions_total)
 
   - type: stat
     title: tokens
     unit: short
+    grid: { x: 6, y: 0, w: 6, h: 4 }
     queries:
       - expr: sum(pilot_tokens_consumed_total)
 
@@ -22,20 +26,24 @@ widgets:
     title: cost
     unit: currencyUSD
     decimals: 2
+    grid: { x: 12, y: 0, w: 6, h: 4 }
     queries:
       - expr: sum(pilot_execution_cost_usd_total)
 
   - type: stat
     title: active prs
     unit: short
+    grid: { x: 18, y: 0, w: 6, h: 4 }
     queries:
       - expr: sum(pilot_active_prs)
 
+  # Row 2 — success gauge + token breakdown bars.
   - type: gauge
     title: success rate
     unit: percentunit
     min: 0
     max: 1
+    grid: { x: 0, y: 4, w: 12, h: 6 }
     thresholds:
       - color: red
       - value: 0.8
@@ -45,17 +53,28 @@ widgets:
     queries:
       - expr: pilot_success_rate
 
-  - type: timeseries
-    title: p95 execution
-    unit: s
+  - type: bargauge
+    title: tokens by direction
+    unit: short
+    grid: { x: 12, y: 4, w: 12, h: 6 }
     queries:
-      - expr: histogram_quantile(0.95, sum(rate(pilot_execution_duration_seconds_bucket[5m])) by (le))
-        legend: p95
+      - expr: sum(pilot_tokens_consumed_total) by (direction)
+        legend: "{{direction}}"
+
+  # Row 3 — always-defined charts: a cumulative cost curve and stacked token rate.
+  - type: timeseries
+    title: cumulative cost
+    unit: currencyUSD
+    grid: { x: 0, y: 10, w: 12, h: 8 }
+    queries:
+      - expr: sum(pilot_execution_cost_usd_total)
+        legend: cost
 
   - type: timeseries
-    title: tokens by model
+    title: tokens / 5m
     unit: short
     stacked: true
+    grid: { x: 12, y: 10, w: 12, h: 8 }
     queries:
-      - expr: sum(rate(pilot_tokens_consumed_total[5m])) by (model)
-        legend: "{{model}}"
+      - expr: sum(rate(pilot_tokens_consumed_total[5m])) by (direction)
+        legend: "{{direction}}"

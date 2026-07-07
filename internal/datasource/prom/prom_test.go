@@ -2,6 +2,7 @@ package prom
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -78,8 +79,17 @@ func TestQueryRange(t *testing.T) {
 	if len(series) != 1 || series[0].Legend != "opus" {
 		t.Fatalf("series: %+v", series)
 	}
-	if len(series[0].Points) != 2 { // NaN point dropped
-		t.Errorf("points: got %d, want 2", len(series[0].Points))
+	// Range queries keep NaN points positionally (a gap at a real timestamp) so
+	// charts preserve the time axis — renderers skip NaN dots.
+	if len(series[0].Points) != 3 {
+		t.Fatalf("points: got %d, want 3 (NaN kept)", len(series[0].Points))
+	}
+	if !math.IsNaN(series[0].Points[2].V) {
+		t.Errorf("third point should be NaN, got %v", series[0].Points[2].V)
+	}
+	// Last() skips the trailing NaN and returns the newest finite value.
+	if v, ok := series[0].Last(); !ok || v != 2 {
+		t.Errorf("Last() = %v,%v; want 2,true", v, ok)
 	}
 }
 

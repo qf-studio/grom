@@ -75,13 +75,12 @@ func (c *Client) QueryRange(ctx context.Context, q datasource.Range) ([]widget.S
 	}
 	series := make([]widget.Series, 0, len(mat))
 	for _, ss := range mat {
+		// NaN samples are kept as-is: for a range they mark a gap at a real
+		// timestamp, so the chart preserves the time axis (dropping them would
+		// collapse sparse series onto one edge). Renderers skip NaN dots.
 		pts := make([]widget.Point, 0, len(ss.Values))
 		for _, p := range ss.Values {
-			v := float64(p.Value)
-			if math.IsNaN(v) {
-				continue
-			}
-			pts = append(pts, widget.Point{T: p.Timestamp.Time(), V: v})
+			pts = append(pts, widget.Point{T: p.Timestamp.Time(), V: float64(p.Value)})
 		}
 		series = append(series, widget.Series{
 			Legend: expandLegend(q.Legend, ss.Metric),

@@ -5,6 +5,7 @@ package widget
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -24,12 +25,15 @@ type Series struct {
 	Points []Point
 }
 
-// Last returns the most recent value, or 0 with false when empty.
+// Last returns the most recent finite value, skipping trailing NaN gaps, or 0
+// with false when the series has no finite point.
 func (s Series) Last() (float64, bool) {
-	if len(s.Points) == 0 {
-		return 0, false
+	for i := len(s.Points) - 1; i >= 0; i-- {
+		if v := s.Points[i].V; !math.IsNaN(v) {
+			return v, true
+		}
 	}
-	return s.Points[len(s.Points)-1].V, true
+	return 0, false
 }
 
 // QueryResult is the data delivered to a widget.

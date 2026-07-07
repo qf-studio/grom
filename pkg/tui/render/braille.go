@@ -142,11 +142,14 @@ func BrailleMulti(series [][]float64, width, rows int, colors []string) []string
 	dotW := width * 2
 	dotH := rows * 4
 
-	// Shared min/max across all series.
+	// Shared min/max across all series (NaN samples ignored).
 	first := true
 	var minV, maxV float64
 	for _, vals := range series {
 		for _, v := range vals {
+			if math.IsNaN(v) {
+				continue
+			}
 			if first {
 				minV, maxV = v, v
 				first = false
@@ -273,8 +276,8 @@ func BrailleStacked(series [][]float64, width, rows int, colors []string) []stri
 	for c := 0; c < dotW; c++ {
 		total := 0.0
 		for i := range cols {
-			if cols[i][c] > 0 {
-				total += cols[i][c]
+			if v := cols[i][c]; v > 0 && !math.IsNaN(v) {
+				total += v
 			}
 		}
 		if total > maxTotal {
@@ -297,7 +300,7 @@ func BrailleStacked(series [][]float64, width, rows int, colors []string) []stri
 		prevLevel := 0
 		for si := range cols {
 			v := cols[si][c]
-			if v < 0 {
+			if v < 0 || math.IsNaN(v) {
 				v = 0
 			}
 			running += v
@@ -360,57 +363,32 @@ func blankRows(width, rows int) []string {
 
 // scaleWithRange resamples values onto dotW columns with an explicit y-range.
 func scaleWithRange(values []float64, dotW, dotH int, minV, maxV float64) []int {
-	heights := make([]int, dotW)
-	if len(values) == 0 {
-		return heights
-	}
-	span := maxV - minV
-	n := len(values)
-	cols := dotW
-	if n < cols {
-		cols = n
-	}
-	offset := dotW - cols
-	for i := 0; i < cols; i++ {
-		var idx int
-		if cols == 1 {
-			idx = n - 1
-		} else {
-			idx = int(math.Round(float64(i) / float64(cols-1) * float64(n-1)))
-		}
-		v := values[idx]
-		var h int
-		if span == 0 {
-			if v > 0 {
-				h = dotH / 2
-			} else {
-				h = 1
-			}
-		} else {
-			h = int(math.Round((v-minV)/span*float64(dotH-1))) + 1
-		}
-		if h < 1 {
-			h = 1
-		}
-		if h > dotH {
-			h = dotH
-		}
-		heights[offset+i] = h
-	}
-	return heights
+	return resampleHeights(values, dotW, dotH, minV, maxV)
 }
 
 // scaleToDots resamples values onto dotW columns and scales each to a dot
-// height in 1..dotH (0 = no data). Right-aligned: the most recent value maps
-// to the rightmost column.
+// height in 1..dotH (0 = no data / NaN gap). Right-aligned only when there are
+// fewer points than columns (sparkline history); a full-width series maps
+// index → column across the whole axis.
 func scaleToDots(values []float64, dotW, dotH int) []int {
-	heights := make([]int, dotW)
-	if len(values) == 0 {
-		return heights
+	minV, maxV, ok := minMaxValid(values)
+	if !ok {
+		return make([]int, dotW) // all NaN / empty → blank
 	}
+	return resampleHeights(values, dotW, dotH, minV, maxV)
+}
 
-	minV, maxV := values[0], values[0]
-	for _, v := range values[1:] {
+// minMaxValid returns the min and max of the non-NaN values, and whether any
+// finite value was seen.
+func minMaxValid(values []float64) (minV, maxV float64, ok bool) {
+	for _, v := range values {
+		if math.IsNaN(v) {
+			continue
+		}
+		if !ok {
+			minV, maxV, ok = v, v, true
+			continue
+		}
 		if v < minV {
 			minV = v
 		}
@@ -418,10 +396,19 @@ func scaleToDots(values []float64, dotW, dotH int) []int {
 			maxV = v
 		}
 	}
-	span := maxV - minV
+	return minV, maxV, ok
+}
 
-	// Resample: map each dot column to a value index (nearest).
+// resampleHeights maps values onto dotW columns (nearest index) and scales each
+// to a dot height in 1..dotH against [minV, maxV]. NaN samples become height 0
+// (a gap), so sparse series render at their true positions instead of shifting.
+func resampleHeights(values []float64, dotW, dotH int, minV, maxV float64) []int {
+	heights := make([]int, dotW)
 	n := len(values)
+	if n == 0 {
+		return heights
+	}
+	span := maxV - minV
 	cols := dotW
 	if n < cols {
 		cols = n
@@ -435,6 +422,9 @@ func scaleToDots(values []float64, dotW, dotH int) []int {
 			idx = int(math.Round(float64(i) / float64(cols-1) * float64(n-1)))
 		}
 		v := values[idx]
+		if math.IsNaN(v) {
+			continue // gap
+		}
 		var h int
 		if span == 0 {
 			if v > 0 {

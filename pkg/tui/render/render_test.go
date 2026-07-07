@@ -1,6 +1,7 @@
 package render
 
 import (
+	"math"
 	"strings"
 	"testing"
 
@@ -145,4 +146,52 @@ func TestTextHelpersNonPositiveWidth(t *testing.T) {
 			t.Errorf("PadOrTruncate(_, %d) = %q, want empty", w, got)
 		}
 	}
+}
+
+// TestBrailleAreaNaNGap verifies NaN samples render as gaps at their true
+// position rather than shifting the series or panicking.
+func TestBrailleAreaNaNGap(t *testing.T) {
+	nan := math.NaN()
+	// Real data only in the middle third; NaN on both sides.
+	vals := make([]float64, 60)
+	for i := range vals {
+		if i < 20 || i >= 40 {
+			vals[i] = nan
+		} else {
+			vals[i] = float64(i)
+		}
+	}
+	gr := GradientStyles([]string{"#7aa2f7"}, 6)
+	rows := BrailleArea(vals, 40, 6, gr)
+	if len(rows) != 6 {
+		t.Fatalf("got %d rows, want 6", len(rows))
+	}
+	joined := ""
+	for _, r := range rows {
+		joined += r
+	}
+	if !containsBraille(joined) {
+		t.Error("expected braille dots for the finite middle section")
+	}
+}
+
+// TestScaleAllNaN ensures an all-NaN series produces no dots (blank), no panic.
+func TestScaleAllNaN(t *testing.T) {
+	nan := math.NaN()
+	vals := []float64{nan, nan, nan, nan}
+	rows := BrailleArea(vals, 10, 4, GradientStyles([]string{"#fff"}, 4))
+	for _, r := range rows {
+		if containsBraille(r) {
+			t.Errorf("all-NaN series should be blank, got %q", r)
+		}
+	}
+}
+
+func containsBraille(s string) bool {
+	for _, r := range s {
+		if r >= 0x2801 && r <= 0x28ff {
+			return true
+		}
+	}
+	return false
 }

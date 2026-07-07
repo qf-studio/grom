@@ -1,6 +1,7 @@
 package widget
 
 import (
+	"math"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -134,13 +135,18 @@ func maxStackedTotal(vals [][]float64) float64 {
 	return maxT
 }
 
-// collect returns the shared min/max and per-series value slices.
+// collect returns the shared min/max (ignoring NaN gaps) and per-series value
+// slices. NaN points are kept positionally in the slices so charts preserve the
+// time axis; only the scale computation skips them.
 func (t *TimeSeries) collect() (minV, maxV float64, vals [][]float64) {
 	first := true
 	for _, s := range t.res.Series {
 		sv := make([]float64, len(s.Points))
 		for i, p := range s.Points {
 			sv[i] = p.V
+			if math.IsNaN(p.V) {
+				continue
+			}
 			if first {
 				minV, maxV = p.V, p.V
 				first = false
