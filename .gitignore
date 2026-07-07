@@ -1,0 +1,9 @@
+bin/
+dist/
+coverage.out
+coverage.html
+*.log
+.DS_Store
+
+# built binary
+/grot
