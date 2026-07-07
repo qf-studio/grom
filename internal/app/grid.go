@@ -1,6 +1,10 @@
 package app
 
-import "github.com/qf-studio/grot/internal/config"
+import (
+	"sort"
+
+	"github.com/qf-studio/grot/internal/config"
+)
 
 // Rect is a widget's placement in terminal cells, top-left origin.
 type Rect struct{ X, Y, W, H int }
@@ -39,21 +43,87 @@ func maxPerRow(termW int) int {
 }
 
 // GridLayout arranges widgets into absolute terminal-cell rectangles for a
-// termW×termH viewport. It auto-flows left-to-right, wrapping into rows; each
-// row's height is the tallest widget in it, and the last cell absorbs any
-// rounding remainder so rows always span the full width. Reflow is driven by
-// width breakpoints (see maxPerRow). termH is currently advisory — vertical
-// overflow is handled by the caller's scroll, not by squeezing rows.
-//
-// The 24-column gridPos honoring path (Grafana import) lands in Phase 5; this
-// packer serves native configs, which typically omit explicit placement.
+// termW×termH viewport. Dashboards imported from Grafana carry 24-column
+// gridPos, which is scaled to the terminal; native configs omit placement and
+// are auto-flowed into rows. termH is advisory — vertical overflow is handled
+// by the caller's scroll.
 func GridLayout(specs []config.WidgetSpec, termW, termH int) []Rect {
 	_ = termH
-	rects := make([]Rect, len(specs))
 	if len(specs) == 0 {
-		return rects
+		return nil
 	}
+	if hasGridPos(specs) {
+		return gridPosLayout(specs, termW)
+	}
+	return autoFlow(specs, termW)
+}
 
+// hasGridPos reports whether any widget declares an explicit 24-column slot.
+func hasGridPos(specs []config.WidgetSpec) bool {
+	for _, s := range specs {
+		if s.Grid.W > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// gridUnitRows converts Grafana grid-height units (~30px each) to terminal
+// rows. Grafana stat panels are h=4, charts h=8; ×3/2 gives 6 and 12 — close to
+// the auto-flow heights — with a floor so nothing renders below its chrome.
+func gridUnitRows(h int) int {
+	r := h * 3 / 2
+	if r < 4 {
+		return 4
+	}
+	return r
+}
+
+// gridPosLayout maps each widget's 24-column gridPos onto the terminal. Widgets
+// sharing a Grafana row (same Y) map to the same terminal band and the same
+// height (the row's tallest), so the row-based compositor reproduces the
+// dashboard. Horizontal position/width scale from 24 columns to termW.
+func gridPosLayout(specs []config.WidgetSpec, termW int) []Rect {
+	rects := make([]Rect, len(specs))
+
+	// Distinct Grafana rows, top to bottom.
+	rowOf := map[int][]int{}
+	var ys []int
+	for i, s := range specs {
+		if _, seen := rowOf[s.Grid.Y]; !seen {
+			ys = append(ys, s.Grid.Y)
+		}
+		rowOf[s.Grid.Y] = append(rowOf[s.Grid.Y], i)
+	}
+	sort.Ints(ys)
+
+	yCell := 0
+	for _, gy := range ys {
+		idxs := rowOf[gy]
+		rowH := 0
+		for _, i := range idxs {
+			if h := gridUnitRows(specs[i].Grid.H); h > rowH {
+				rowH = h
+			}
+		}
+		for _, i := range idxs {
+			g := specs[i].Grid
+			x0 := g.X * termW / 24
+			x1 := (g.X + g.W) * termW / 24
+			if x1 > termW {
+				x1 = termW
+			}
+			rects[i] = Rect{X: x0, Y: yCell, W: x1 - x0, H: rowH}
+		}
+		yCell += rowH
+	}
+	return rects
+}
+
+// autoFlow packs widgets left-to-right into rows, even-splitting each row's
+// width. Used for native configs, which omit explicit placement.
+func autoFlow(specs []config.WidgetSpec, termW int) []Rect {
+	rects := make([]Rect, len(specs))
 	per := maxPerRow(termW)
 	if fit := termW / minColW; fit < per {
 		per = fit

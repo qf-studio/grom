@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -37,21 +38,41 @@ func headerLine(title string, th theme.Theme, rangeLabel string, zoomed bool, st
 	return b.String()
 }
 
-// composeGrid draws widgets into their row-ordered rects. Rects sharing a Y
-// form one row joined horizontally; rows stack vertically. focus is the index
-// drawn focused (-1 for none).
+// composeGrid draws widgets into their rects. Rects sharing a Y form one row,
+// laid left-to-right in X order with blank spacers filling any horizontal gaps;
+// rows stack top to bottom. focus is the index drawn focused (-1 for none).
 func composeGrid(widgets []widget.Widget, rects []Rect, th theme.Theme, focus int) string {
 	if len(widgets) == 0 {
 		return ""
 	}
+	rowOf := map[int][]int{}
+	var ys []int
+	for i, r := range rects {
+		if _, seen := rowOf[r.Y]; !seen {
+			ys = append(ys, r.Y)
+		}
+		rowOf[r.Y] = append(rowOf[r.Y], i)
+	}
+	sort.Ints(ys)
+
 	var rows []string
-	i := 0
-	for i < len(rects) {
-		y := rects[i].Y
+	for _, y := range ys {
+		idxs := rowOf[y]
+		sort.Slice(idxs, func(a, b int) bool { return rects[idxs[a]].X < rects[idxs[b]].X })
+		rowH := 0
+		for _, i := range idxs {
+			if rects[i].H > rowH {
+				rowH = rects[i].H
+			}
+		}
 		var cols []string
-		for i < len(rects) && rects[i].Y == y {
+		cursor := 0
+		for _, i := range idxs {
+			if rects[i].X > cursor {
+				cols = append(cols, blankCell(rects[i].X-cursor, rowH))
+			}
 			cols = append(cols, safeRender(widgets[i], rects[i].W, rects[i].H, th, i == focus))
-			i++
+			cursor = rects[i].X + rects[i].W
 		}
 		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Top, cols...))
 	}

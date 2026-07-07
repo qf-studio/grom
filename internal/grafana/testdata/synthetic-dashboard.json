@@ -1,0 +1,61 @@
+{
+  "title": "Synthetic",
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "type": "gauge",
+      "title": "Saturation",
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 90 }
+            ]
+          }
+        }
+      },
+      "targets": [{ "expr": "saturation_ratio", "legendFormat": "sat" }]
+    },
+    {
+      "type": "bargauge",
+      "title": "Queues",
+      "gridPos": { "x": 8, "y": 0, "w": 8, "h": 6 },
+      "fieldConfig": { "defaults": { "unit": "short", "max": 10 } },
+      "targets": [{ "expr": "queue_depth", "legendFormat": "{{queue}}" }]
+    },
+    {
+      "type": "heatmap",
+      "title": "Latency Heatmap",
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 6 },
+      "targets": [{ "expr": "latency_bucket" }]
+    },
+    {
+      "type": "row",
+      "title": "Details",
+      "collapsed": true,
+      "gridPos": { "x": 0, "y": 6, "w": 24, "h": 1 },
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "Throughput",
+          "gridPos": { "x": 0, "y": 7, "w": 24, "h": 8 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": { "stacking": { "mode": "normal", "group": "A" } }
+            }
+          },
+          "targets": [{ "expr": "throughput", "legendFormat": "{{method}}" }]
+        }
+      ]
+    }
+  ]
+}

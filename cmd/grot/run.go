@@ -11,24 +11,26 @@ import (
 	"github.com/qf-studio/grot/internal/app"
 	"github.com/qf-studio/grot/internal/config"
 	"github.com/qf-studio/grot/internal/datasource/prom"
+	"github.com/qf-studio/grot/internal/grafana"
 	"github.com/qf-studio/grot/pkg/tui/theme"
 	"github.com/qf-studio/grot/pkg/tui/widget"
 )
 
 func runCmd() *cobra.Command {
 	var (
-		cfgPath   string
-		promAddr  string
-		themeName string
-		ascii     bool
-		once      bool
+		cfgPath     string
+		grafanaPath string
+		promAddr    string
+		themeName   string
+		ascii       bool
+		once        bool
 	)
 
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Render a dashboard config against a live Prometheus",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			dash, err := config.Load(cfgPath)
+			dash, err := loadDashboard(cmd, cfgPath, grafanaPath)
 			if err != nil {
 				return err
 			}
@@ -63,13 +65,36 @@ func runCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&cfgPath, "config", "c", "", "dashboard YAML config (required)")
+	cmd.Flags().StringVarP(&cfgPath, "config", "c", "", "dashboard YAML config")
+	cmd.Flags().StringVar(&grafanaPath, "grafana-json", "", "import a Grafana dashboard JSON instead of a YAML config")
 	cmd.Flags().StringVar(&promAddr, "prom", "http://localhost:9090", "Prometheus base URL")
 	cmd.Flags().StringVar(&themeName, "theme", "", "override theme (default: config theme)")
 	cmd.Flags().BoolVar(&ascii, "ascii", false, "block-character charts instead of braille")
 	cmd.Flags().BoolVar(&once, "once", false, "render a single static frame and exit (no TUI)")
-	_ = cmd.MarkFlagRequired("config")
 	return cmd
+}
+
+// loadDashboard resolves the dashboard from exactly one of --config or
+// --grafana-json. Import warnings are printed to stderr so they don't corrupt a
+// piped --once frame on stdout.
+func loadDashboard(cmd *cobra.Command, cfgPath, grafanaPath string) (*config.Dashboard, error) {
+	switch {
+	case cfgPath != "" && grafanaPath != "":
+		return nil, fmt.Errorf("use --config or --grafana-json, not both")
+	case grafanaPath != "":
+		dash, warnings, err := grafana.Import(grafanaPath)
+		if err != nil {
+			return nil, err
+		}
+		for _, w := range warnings {
+			cmd.PrintErrln("warning:", w)
+		}
+		return dash, nil
+	case cfgPath != "":
+		return config.Load(cfgPath)
+	default:
+		return nil, fmt.Errorf("one of --config or --grafana-json is required")
+	}
 }
 
 // fetchTimeout bounds a single one-shot fetch: 10s, or the refresh interval if

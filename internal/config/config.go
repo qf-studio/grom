@@ -20,6 +20,9 @@ const (
 	TypeGauge      WidgetType = "gauge"
 	TypeBarGauge   WidgetType = "bargauge"
 	TypeTimeSeries WidgetType = "timeseries"
+	// TypePlaceholder marks a panel grot cannot render (produced by the Grafana
+	// importer for unsupported panel types). It carries no queries.
+	TypePlaceholder WidgetType = "placeholder"
 )
 
 // Dashboard is grot's canonical dashboard model.
@@ -109,11 +112,21 @@ func Parse(b []byte) (*Dashboard, error) {
 	if err := dec.Decode(&d); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
-	if err := d.validate(); err != nil {
+	if err := d.Normalize(); err != nil {
 		return nil, err
 	}
-	d.applyDefaults()
 	return &d, nil
+}
+
+// Normalize validates the dashboard and fills in defaults. It is exported so
+// other producers of a Dashboard (e.g. the Grafana importer) can run the same
+// checks the YAML loader does.
+func (d *Dashboard) Normalize() error {
+	if err := d.validate(); err != nil {
+		return err
+	}
+	d.applyDefaults()
+	return nil
 }
 
 func (d *Dashboard) validate() error {
@@ -127,6 +140,8 @@ func (d *Dashboard) validate() error {
 		}
 		switch w.Type {
 		case TypeStat, TypeGauge, TypeBarGauge, TypeTimeSeries:
+		case TypePlaceholder:
+			continue // placeholders carry no queries
 		case "":
 			return fmt.Errorf("widget %s: missing type", label)
 		default:

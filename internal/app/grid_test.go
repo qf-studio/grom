@@ -122,3 +122,40 @@ func TestGridHeight(t *testing.T) {
 		t.Errorf("GridHeight = %d, want 22", got)
 	}
 }
+
+func TestGridPosLayout(t *testing.T) {
+	// Two Grafana rows: a full-width row of 4 stats (y=0), then one full-width
+	// chart (y=4). gridPos must scale 24 cols → termW and stack rows.
+	specs := []config.WidgetSpec{
+		{Type: config.TypeStat, Grid: config.GridPos{X: 0, Y: 0, W: 6, H: 4}},
+		{Type: config.TypeStat, Grid: config.GridPos{X: 6, Y: 0, W: 6, H: 4}},
+		{Type: config.TypeStat, Grid: config.GridPos{X: 12, Y: 0, W: 6, H: 4}},
+		{Type: config.TypeStat, Grid: config.GridPos{X: 18, Y: 0, W: 6, H: 4}},
+		{Type: config.TypeTimeSeries, Grid: config.GridPos{X: 0, Y: 4, W: 24, H: 8}},
+	}
+	rects := GridLayout(specs, 240, 60)
+
+	// Row 0: four equal 60-wide cells at y=0, spanning full width.
+	for i := 0; i < 4; i++ {
+		if rects[i].Y != 0 {
+			t.Errorf("stat %d Y = %d, want 0", i, rects[i].Y)
+		}
+		if rects[i].W != 60 {
+			t.Errorf("stat %d W = %d, want 60 (6/24 of 240)", i, rects[i].W)
+		}
+		if rects[i].X != i*60 {
+			t.Errorf("stat %d X = %d, want %d", i, rects[i].X, i*60)
+		}
+	}
+	// Row 1: full-width chart below the stats.
+	chart := rects[4]
+	if chart.X != 0 || chart.W != 240 {
+		t.Errorf("chart X/W = %d/%d, want 0/240", chart.X, chart.W)
+	}
+	if chart.Y != rects[0].H {
+		t.Errorf("chart Y = %d, want %d (below row 0)", chart.Y, rects[0].H)
+	}
+	if chart.H <= rects[0].H {
+		t.Errorf("chart height %d should exceed stat height %d (h=8 vs h=4)", chart.H, rects[0].H)
+	}
+}

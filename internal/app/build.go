@@ -41,6 +41,9 @@ func BuildWidget(spec config.WidgetSpec) (widget.Widget, error) {
 		w.Decimals = spec.Decimals
 		w.Stacked = spec.Stacked
 		return w, nil
+	case config.TypePlaceholder:
+		// spec.Title already carries "unsupported: <type>".
+		return widget.NewPlaceholder(spec.Title, spec.Title), nil
 	default:
 		return nil, fmt.Errorf("unknown widget type %q", spec.Type)
 	}
