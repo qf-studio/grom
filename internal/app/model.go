@@ -48,6 +48,7 @@ type Model struct {
 	rects         []Rect
 	focus         int
 	zoomed        bool
+	helpShown     bool
 	scroll        int
 	ready         bool
 
@@ -131,6 +132,9 @@ func (m Model) View() string {
 		return ""
 	}
 	header := headerLine(coalesce(m.dash.Title, "grot"), m.th, formatRange(m.rng), m.zoomed, m.staleNames(), m.width)
+	if m.helpShown {
+		return header + "\n" + helpView(m.th, m.width, m.contentHeight())
+	}
 	if m.zoomed && len(m.widgets) > 0 {
 		r := m.fetchRect(m.focus)
 		return header + "\n" + safeRender(m.widgets[m.focus], r.W, r.H, m.th, true)
@@ -140,6 +144,15 @@ func (m Model) View() string {
 }
 
 func (m Model) handleKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// The help overlay is modal: any key dismisses it, except quit.
+	if m.helpShown {
+		switch k.String() {
+		case "q", "ctrl+c":
+			return m, tea.Quit
+		}
+		m.helpShown = false
+		return m, nil
+	}
 	switch k.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
@@ -157,6 +170,10 @@ func (m Model) handleKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.ensureVisible()
 	case "enter":
 		m.zoomed = !m.zoomed
+	case "esc":
+		m.zoomed = false
+	case "?":
+		m.helpShown = true
 	case "+", "=":
 		if m.rangeIdx < len(rangePresets)-1 {
 			m.rangeIdx++

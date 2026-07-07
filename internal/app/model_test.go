@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/qf-studio/grot/internal/config"
 	"github.com/qf-studio/grot/internal/datasource"
@@ -106,6 +107,58 @@ func TestModelZoomToggle(t *testing.T) {
 	m = drive(m, tea.KeyMsg{Type: tea.KeyEnter})
 	if m.zoomed {
 		t.Error("Enter again should unzoom")
+	}
+}
+
+func TestModelEscClosesZoom(t *testing.T) {
+	m, _ := newModel(t)
+	m = drive(m, tea.WindowSizeMsg{Width: 100, Height: 40})
+	m = drive(m, tea.KeyMsg{Type: tea.KeyEnter})
+	if !m.zoomed {
+		t.Fatal("Enter should zoom")
+	}
+	m = drive(m, tea.KeyMsg{Type: tea.KeyEscape})
+	if m.zoomed {
+		t.Error("esc should close zoom")
+	}
+}
+
+func TestModelHelpOverlay(t *testing.T) {
+	m, _ := newModel(t)
+	m = drive(m, tea.WindowSizeMsg{Width: 100, Height: 40})
+
+	m = drive(m, runeKey('?'))
+	if !m.helpShown {
+		t.Fatal("'?' should show help")
+	}
+	v := m.View()
+	if !strings.Contains(v, "cycle theme") {
+		t.Errorf("help view missing bindings; got:\n%s", v)
+	}
+	// Overlay lines must not exceed the viewport width (wrap corruption).
+	for i, line := range strings.Split(v, "\n") {
+		if got := lipgloss.Width(line); got > 100 {
+			t.Errorf("help line %d wider than viewport: %d", i, got)
+		}
+	}
+
+	// Any key dismisses the overlay without acting on the grid.
+	m = drive(m, runeKey('j'))
+	if m.helpShown {
+		t.Error("any key should dismiss help")
+	}
+	if m.focus != 0 {
+		t.Errorf("dismissing key must not move focus; focus = %d", m.focus)
+	}
+
+	// Quit still works while help is open.
+	m = drive(m, runeKey('?'))
+	_, cmd := m.Update(runeKey('q'))
+	if cmd == nil {
+		t.Fatal("'q' from help should return a command")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Error("'q' from help should quit")
 	}
 }
 
