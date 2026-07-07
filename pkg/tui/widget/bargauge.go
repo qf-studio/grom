@@ -86,6 +86,7 @@ func (b *BarGauge) body(iw, ih int, th theme.Theme) string {
 		barW = 3
 	}
 
+	track := lipgloss.NewStyle().Foreground(lipgloss.Color(render.Dim(th.Border, 0.9)))
 	rows := make([]string, len(series))
 	for i := range series {
 		frac := 0.0
@@ -93,10 +94,10 @@ func (b *BarGauge) body(iw, ih int, th theme.Theme) string {
 			frac = values[i] / maxV
 		}
 		color := thresholdColor(values[i], b.Thresholds, th, th.SeriesColor(i))
-		fill := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
 
 		legend := th.LabelStyle().Render(render.PadOrTruncate(labels[i], legendW))
-		bar := render.PadOrTruncate(render.HBar(frac, barW, fill), barW)
+		// btop disks-style segmented bar with a dark track.
+		bar := render.SegmentMeter(frac, barW, []string{render.Dim(color, 0.6), color}, track)
 		val := th.DimStyle().Render(render.PadOrTruncate(valueTexts[i], valueW))
 		rows[i] = legend + "  " + bar + "  " + val
 	}

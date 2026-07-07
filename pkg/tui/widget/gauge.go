@@ -64,13 +64,14 @@ func (g *Gauge) body(iw, ih int, th theme.Theme) string {
 	color := thresholdColor(v, g.Thresholds, th, th.Accent)
 	valueStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Bold(true)
 
-	// The meter fills in the CURRENT value's threshold color (dim→bright
-	// sweep of that one color). A rainbow sweep would read as "the left part
-	// of my metric is failing" — the color must answer "how is it now?".
+	// btop-style segmented meter, filled in the CURRENT value's threshold
+	// color (dim→bright sweep of that one color). A rainbow sweep would read
+	// as "the left part of my metric is failing".
 	stops := []string{render.Dim(color, 0.55), color}
+	track := lipgloss.NewStyle().Foreground(lipgloss.Color(render.Dim(th.Border, 0.9)))
 	lines := []string{
 		render.Center(valueStyle.Render(FormatValue(v, g.Unit, g.Decimals)), iw),
-		render.GradientMeter(frac, iw, stops, th.DimMoreStyle()),
+		render.SegmentMeter(frac, iw, stops, track),
 	}
 
 	// Min/max scale line when there's room.

@@ -8,17 +8,19 @@ import (
 	"github.com/qf-studio/grot/pkg/tui/theme"
 )
 
-// TimeSeries renders series as a solid block area chart (btop-dense) with a
-// vertical color gradient. Multiple series render as a stacked area. The
-// legend and current values are embedded in the panel's top border; y-scale
-// labels sit in a left gutter. Braille rendering is opt-in (font-dependent).
+// TimeSeries renders series as a braille area chart — the btop texture:
+// airy dot-grid fill, one hue per series with a subtle dim→bright vertical
+// gradient. Multiple series render stacked with a shared y-scale. The legend
+// and current values are embedded in the panel's top border; y-scale labels
+// sit in a left gutter. Solid blocks are the fallback for fonts without
+// braille coverage.
 type TimeSeries struct {
 	data
 	title    string
 	Unit     string
 	Decimals *int
 	Stacked  bool
-	Braille  bool // high-res braille dots instead of solid blocks
+	Solid    bool // block-character fallback instead of braille
 }
 
 // NewTimeSeries creates a time-series chart widget.
@@ -46,6 +48,12 @@ func (t *TimeSeries) body(iw, ih int, th theme.Theme) string {
 	// Shared min/max for the y-gutter labels.
 	minV, maxV, vals := t.collect()
 
+	// Multi-series renders stacked (0..max column total) — labels must match.
+	if len(vals) > 1 {
+		minV = 0
+		maxV = maxStackedTotal(vals)
+	}
+
 	hiLabel := FormatValue(maxV, t.Unit, t.Decimals)
 	loLabel := FormatValue(minV, t.Unit, t.Decimals)
 	gutter := len(hiLabel)
@@ -68,14 +76,18 @@ func (t *TimeSeries) body(iw, ih int, th theme.Theme) string {
 
 	var rows []string
 	switch {
-	case t.Braille:
-		rows = render.BrailleMulti(vals, chartW, ih, colors)
-	case len(vals) == 1:
+	case t.Solid && len(vals) == 1:
 		gradient := render.GradientStyles([]string{colors[0]}, ih)
 		rows = render.BlockArea(vals[0], chartW, ih, gradient)
-	default:
-		// Multi-series → stacked solid area, one color per series.
+	case t.Solid:
 		rows = render.BlockStacked(vals, chartW, ih, colors)
+	case len(vals) == 1:
+		gradient := render.GradientStyles(
+			[]string{render.Dim(colors[0], 0.5), colors[0]}, ih)
+		rows = render.BrailleArea(vals[0], chartW, ih, gradient)
+	default:
+		// Multi-series → stacked braille, one flat hue per series.
+		rows = render.BrailleStacked(vals, chartW, ih, colors)
 	}
 
 	lines := make([]string, 0, ih)
@@ -96,6 +108,30 @@ func (t *TimeSeries) body(iw, ih int, th theme.Theme) string {
 		lines = append(lines, th.DimStyle().Render(label)+sep+row)
 	}
 	return strings.Join(lines, "\n")
+}
+
+// maxStackedTotal returns the largest per-index sum across series (series
+// from one query_range share timestamps, so index alignment holds).
+func maxStackedTotal(vals [][]float64) float64 {
+	n := 0
+	for _, sv := range vals {
+		if len(sv) > n {
+			n = len(sv)
+		}
+	}
+	maxT := 0.0
+	for i := 0; i < n; i++ {
+		total := 0.0
+		for _, sv := range vals {
+			if i < len(sv) && sv[i] > 0 {
+				total += sv[i]
+			}
+		}
+		if total > maxT {
+			maxT = total
+		}
+	}
+	return maxT
 }
 
 // collect returns the shared min/max and per-series value slices.

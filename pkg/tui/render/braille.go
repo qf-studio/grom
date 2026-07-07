@@ -254,6 +254,101 @@ func BrailleMulti(series [][]float64, width, rows int, colors []string) []string
 	return out
 }
 
+// BrailleStacked renders multiple series as a stacked braille area chart of
+// exactly width×rows cells (btop texture). Column totals share one y-scale;
+// each cell is colored by the topmost series visible in it.
+func BrailleStacked(series [][]float64, width, rows int, colors []string) []string {
+	if width <= 0 || rows <= 0 || len(series) == 0 {
+		return blankRows(width, rows)
+	}
+	dotW := width * 2
+	dotH := rows * 4
+
+	cols := make([][]float64, len(series))
+	for i, vals := range series {
+		cols[i] = resampleCols(vals, dotW)
+	}
+
+	maxTotal := 0.0
+	for c := 0; c < dotW; c++ {
+		total := 0.0
+		for i := range cols {
+			if cols[i][c] > 0 {
+				total += cols[i][c]
+			}
+		}
+		if total > maxTotal {
+			maxTotal = total
+		}
+	}
+	if maxTotal == 0 {
+		return blankRows(width, rows)
+	}
+
+	masks := make([][]int, rows)
+	owner := make([][]int, rows) // series idx+1 of the topmost dot in the cell
+	for r := range masks {
+		masks[r] = make([]int, width)
+		owner[r] = make([]int, width)
+	}
+
+	for c := 0; c < dotW; c++ {
+		running := 0.0
+		prevLevel := 0
+		for si := range cols {
+			v := cols[si][c]
+			if v < 0 {
+				v = 0
+			}
+			running += v
+			level := int(running / maxTotal * float64(dotH))
+			for h := prevLevel + 1; h <= level; h++ {
+				y := dotH - h
+				cr, cc := y/4, c/2
+				masks[cr][cc] |= brailleBits[y%4][c%2]
+				// Topmost series in a cell wins its color.
+				if owner[cr][cc] < si+1 {
+					owner[cr][cc] = si + 1
+				}
+			}
+			prevLevel = level
+		}
+	}
+
+	flat := make([]lipgloss.Style, len(series))
+	for i := range series {
+		flat[i] = lipgloss.NewStyle().Foreground(lipgloss.Color(colors[i%len(colors)]))
+	}
+
+	out := make([]string, rows)
+	for r := 0; r < rows; r++ {
+		var b strings.Builder
+		c := 0
+		for c < width {
+			own := owner[r][c]
+			start := c
+			for c < width && owner[r][c] == own {
+				c++
+			}
+			var run strings.Builder
+			for i := start; i < c; i++ {
+				if masks[r][i] == 0 {
+					run.WriteRune(' ')
+				} else {
+					run.WriteRune(rune(0x2800 | masks[r][i]))
+				}
+			}
+			if own == 0 {
+				b.WriteString(run.String())
+			} else {
+				b.WriteString(flat[own-1].Render(run.String()))
+			}
+		}
+		out[r] = b.String()
+	}
+	return out
+}
+
 func blankRows(width, rows int) []string {
 	out := make([]string, rows)
 	blank := strings.Repeat(" ", width)

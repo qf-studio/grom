@@ -84,6 +84,37 @@ func GradientMeter(frac float64, width int, stops []string, empty lipgloss.Style
 	return b.String()
 }
 
+// SegmentMeter renders a btop-style segmented meter: discrete square cells,
+// filled portion swept through a color gradient, remainder in the track
+// style (dark squares):
+//
+//	■■■■■■■■■■■■□□□□□
+func SegmentMeter(frac float64, width int, stops []string, track lipgloss.Style) string {
+	if width <= 0 {
+		return ""
+	}
+	if frac < 0 {
+		frac = 0
+	}
+	if frac > 1 {
+		frac = 1
+	}
+	filled := int(frac*float64(width) + 0.5)
+	if filled > width {
+		filled = width
+	}
+	styles := GradientStyles(stops, width)
+
+	var b strings.Builder
+	for i := 0; i < filled; i++ {
+		b.WriteString(styles[i].Render("■"))
+	}
+	if width-filled > 0 {
+		b.WriteString(track.Render(strings.Repeat("■", width-filled)))
+	}
+	return b.String()
+}
+
 // HBar renders a horizontal bar (no empty track) of up to width cells with a
 // half-block cap for sub-cell resolution.
 func HBar(frac float64, width int, fill lipgloss.Style) string {

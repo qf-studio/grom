@@ -62,14 +62,14 @@ func topBorderInfo(title, info string, w int, ps PanelStyle) string {
 	var left string
 	leftWidth := 1 // ╭
 	if title != "" {
-		titleUpper := strings.ToUpper(title)
+		// btop-quiet: title case preserved (lowercase reads calmer).
 		prefix := "╭─ "
 		maxTitle := w - lipgloss.Width(prefix) - 3 // trailing " ─╮" minimum
-		if lipgloss.Width(titleUpper) > maxTitle {
-			titleUpper = TruncateVisual(titleUpper, maxTitle)
+		if lipgloss.Width(title) > maxTitle {
+			title = TruncateVisual(title, maxTitle)
 		}
-		left = ps.Border.Render(prefix) + ps.Title.Render(titleUpper) + ps.Border.Render(" ")
-		leftWidth = lipgloss.Width(prefix + titleUpper + " ")
+		left = ps.Border.Render(prefix) + ps.Title.Render(title) + ps.Border.Render(" ")
+		leftWidth = lipgloss.Width(prefix + title + " ")
 	} else {
 		left = ps.Border.Render("╭")
 	}

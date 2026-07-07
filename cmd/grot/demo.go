@@ -56,29 +56,48 @@ func renderDemo(th theme.Theme, width int) string {
 
 	fv := func(v float64) *float64 { return &v }
 
+	// noisy plateau: stable base + jitter + occasional spikes — the shape
+	// real service metrics actually have.
+	noisy := func(base, jitter, spike float64) func(i int) float64 {
+		return func(i int) float64 {
+			v := base + jitter*math.Sin(float64(i)*1.7)*math.Cos(float64(i)*0.31)
+			if i%17 == 0 {
+				v += spike
+			}
+			if i%23 == 0 {
+				v += spike * 0.6
+			}
+			if v < 0 {
+				v = 0
+			}
+			return v
+		}
+	}
+
 	// --- Row 1: four stats ---
 	statW := width / 4
 	lastW := width - statW*3 // absorb remainder
 	statH := 6
 
-	success := widget.NewStat("Success Rate", "percent")
+	success := widget.NewStat("success rate", "percent")
 	success.Thresholds = []widget.Threshold{
 		{Color: "red"}, {Value: fv(70), Color: "yellow"}, {Value: fv(90), Color: "green"},
 	}
 	success.SetResult(instant("rate", 66.0))
 
-	queue := widget.NewStat("Queue Depth", "short")
+	queue := widget.NewStat("queue depth", "short")
 	queue.Thresholds = []widget.Threshold{
 		{Color: "green"}, {Value: fv(5), Color: "yellow"}, {Value: fv(15), Color: "red"},
 	}
+	queueGen := noisy(2, 1.2, 4)
 	queue.SetResult(widget.QueryResult{Series: []widget.Series{
-		rangeSeries("queue", func(i int) float64 { return math.Abs(3*math.Sin(float64(i)/5)) + float64(i%3) }, 40),
+		rangeSeries("queue", func(i int) float64 { return math.Round(queueGen(i)) }, 60),
 	}, FetchedAt: now})
 
-	prs := widget.NewStat("Active PRs", "short")
+	prs := widget.NewStat("active prs", "short")
 	prs.SetResult(instant("prs", 4))
 
-	cost := widget.NewStat("Cumulative Cost", "currencyUSD")
+	cost := widget.NewStat("cumulative cost", "currencyUSD")
 	cost.SetResult(instant("cost", 154.23))
 
 	row1 := lipgloss.JoinHorizontal(lipgloss.Top,
@@ -93,13 +112,13 @@ func renderDemo(th theme.Theme, width int) string {
 	otherW := width - halfW
 	row2H := 7
 
-	gauge := widget.NewGauge("CI Pass Rate", "percent", 0, 100)
+	gauge := widget.NewGauge("ci pass rate", "percent", 0, 100)
 	gauge.Thresholds = []widget.Threshold{
 		{Color: "red"}, {Value: fv(70), Color: "yellow"}, {Value: fv(90), Color: "green"},
 	}
 	gauge.SetResult(instant("ci", 87.5))
 
-	bars := widget.NewBarGauge("Tokens by Model", "short")
+	bars := widget.NewBarGauge("tokens by model", "short")
 	bars.SetResult(widget.QueryResult{Series: []widget.Series{
 		{Legend: "opus/input", Points: []widget.Point{{T: now, V: 57_300}}},
 		{Legend: "opus/output", Points: []widget.Point{{T: now, V: 31_000}}},
@@ -112,23 +131,19 @@ func renderDemo(th theme.Theme, width int) string {
 		bars.Render(otherW, row2H, th, false),
 	)
 
-	// --- Row 3: two timeseries ---
-	row3H := 12
+	// --- Row 3: two timeseries (btop-short: airy, not ink mountains) ---
+	row3H := 9
 
-	p95 := widget.NewTimeSeries("Execution Duration P95", "s")
+	p95 := widget.NewTimeSeries("execution duration p95", "s")
 	p95.SetResult(widget.QueryResult{Series: []widget.Series{
-		rangeSeries("p95", func(i int) float64 {
-			return 300 + 150*math.Sin(float64(i)/8) + 30*math.Sin(float64(i)/2)
-		}, 120),
+		rangeSeries("p95", noisy(280, 40, 180), 160),
 	}, FetchedAt: now})
 
-	tokens := widget.NewTimeSeries("Tokens / 5m", "short")
+	tokens := widget.NewTimeSeries("tokens / 5m", "short")
+	tokens.Stacked = true
 	tokens.SetResult(widget.QueryResult{Series: []widget.Series{
-		rangeSeries("opus", func(i int) float64 {
-			v := 2000 + 1800*math.Sin(float64(i)/10) + 400*math.Cos(float64(i)/3)
-			return math.Max(v, 0)
-		}, 120),
-		rangeSeries("haiku", func(i int) float64 { return 800 + 300*math.Sin(float64(i)/6) }, 120),
+		rangeSeries("opus", noisy(1800, 500, 1400), 160),
+		rangeSeries("haiku", noisy(700, 250, 500), 160),
 	}, FetchedAt: now})
 
 	row3 := lipgloss.JoinHorizontal(lipgloss.Top,
@@ -138,9 +153,9 @@ func renderDemo(th theme.Theme, width int) string {
 
 	// --- Error/no-data states ---
 	row4H := 5
-	errW := widget.NewStat("Broken Query", "short")
+	errW := widget.NewStat("broken query", "short")
 	errW.SetError(fmt.Errorf(`parse error: unexpected "}"`))
-	empty := widget.NewTimeSeries("No Data Example", "short")
+	empty := widget.NewTimeSeries("no data example", "short")
 	empty.SetResult(widget.QueryResult{FetchedAt: now})
 
 	row4 := lipgloss.JoinHorizontal(lipgloss.Top,
