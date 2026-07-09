@@ -11,10 +11,12 @@ import (
 
 // TimeSeries renders series as a braille area chart — the btop texture:
 // airy dot-grid fill, one hue per series with a subtle dim→bright vertical
-// gradient. Multiple series render stacked with a shared y-scale. The legend
-// and current values are embedded in the panel's top border; y-scale labels
-// sit in a left gutter. Solid blocks are the fallback for fonts without
-// braille coverage.
+// gradient. Multiple series overlay on a shared y-scale (series 0 as a
+// filled area, the rest as lines — Grafana's default), or stack when
+// Stacked is set. The legend and current values are embedded in the panel's
+// top border; y-scale labels sit in a left gutter. Solid blocks are the
+// fallback for fonts without braille coverage; block mode has no overlay
+// primitive, so multi-series always stacks there.
 type TimeSeries struct {
 	data
 	title    string
@@ -49,8 +51,10 @@ func (t *TimeSeries) body(iw, ih int, th theme.Theme) string {
 	// Shared min/max for the y-gutter labels.
 	minV, maxV, vals := t.collect()
 
-	// Multi-series renders stacked (0..max column total) — labels must match.
-	if len(vals) > 1 {
+	// Stacked multi-series scales 0..max column total; overlay keeps the
+	// shared min/max, matching BrailleMulti's internal scale. Solid mode has
+	// no overlay primitive, so it always takes the stacked scale.
+	if len(vals) > 1 && (t.Stacked || t.Solid) {
 		minV = 0
 		maxV = maxStackedTotal(vals)
 	}
@@ -86,9 +90,12 @@ func (t *TimeSeries) body(iw, ih int, th theme.Theme) string {
 		gradient := render.GradientStyles(
 			[]string{render.Dim(colors[0], 0.5), colors[0]}, ih)
 		rows = render.BrailleArea(vals[0], chartW, ih, gradient)
-	default:
-		// Multi-series → stacked braille, one flat hue per series.
+	case t.Stacked:
+		// Stacked braille, one flat hue per series.
 		rows = render.BrailleStacked(vals, chartW, ih, colors)
+	default:
+		// Overlay: series 0 as filled area, the rest as lines on top.
+		rows = render.BrailleMulti(vals, chartW, ih, colors)
 	}
 
 	lines := make([]string, 0, ih)

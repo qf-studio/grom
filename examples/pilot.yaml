@@ -106,3 +106,18 @@ widgets:
     queries:
       - expr: sum(rate(pilot_tokens_consumed_total[5m])) by (direction)
         legend: "{{direction}}"
+
+  # Row 4 — time per issue: two same-unit series overlaid (stacked omitted →
+  # overlay: first query fills as area, later ones draw as lines on top).
+  # 1h windows: each point is the average over merges/executions in that hour;
+  # gaps mean no activity. exec durations are session-scoped upstream (not yet
+  # store-hydrated — asked in pilot#4134), so that line starts sparse.
+  - type: timeseries
+    title: time / issue
+    unit: s
+    grid: { x: 0, y: 18, w: 24, h: 8 }
+    queries:
+      - expr: sum(increase(pilot_pr_time_to_merge_seconds_sum[1h])) / (sum(increase(pilot_pr_time_to_merge_seconds_count[1h])) > 0)
+        legend: to merge
+      - expr: sum(increase(pilot_execution_duration_seconds_sum[1h])) / (sum(increase(pilot_execution_duration_seconds_count[1h])) > 0)
+        legend: exec

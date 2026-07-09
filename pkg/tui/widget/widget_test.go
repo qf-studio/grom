@@ -125,3 +125,50 @@ func TestFormatValue(t *testing.T) {
 		}
 	}
 }
+
+func multiResult() QueryResult {
+	now := time.Now()
+	mk := func(legend string, vals ...float64) Series {
+		pts := make([]Point, len(vals))
+		for i, v := range vals {
+			pts[i] = Point{T: now.Add(time.Duration(i) * time.Minute), V: v}
+		}
+		return Series{Legend: legend, Points: pts}
+	}
+	return QueryResult{
+		Series:    []Series{mk("a", 10, 20, 30), mk("b", 5, 15, 25)},
+		FetchedAt: now,
+	}
+}
+
+// Multi-series mode wiring: braille overlay (Stacked=false, the default) must
+// render differently from stacked; solid mode has no overlay primitive, so
+// both flag values render identically there. Overlay output must still be
+// exactly w×h.
+func TestTimeSeriesMultiSeriesModes(t *testing.T) {
+	th := theme.Pilot
+	renderTS := func(stacked, solid bool) string {
+		w := NewTimeSeries("Chart", "short")
+		w.Stacked = stacked
+		w.Solid = solid
+		w.SetResult(multiResult())
+		return w.Render(50, 8, th, false)
+	}
+
+	if renderTS(false, false) == renderTS(true, false) {
+		t.Error("braille overlay and stacked renders identical — Stacked flag not honored")
+	}
+	if renderTS(false, true) != renderTS(true, true) {
+		t.Error("solid mode: overlay and stacked must render identically (no block overlay primitive)")
+	}
+
+	lines := strings.Split(renderTS(false, false), "\n")
+	if len(lines) != 8 {
+		t.Fatalf("overlay: %d lines, want 8", len(lines))
+	}
+	for i, line := range lines {
+		if got := lipgloss.Width(line); got != 50 {
+			t.Errorf("overlay line %d: width %d, want 50", i, got)
+		}
+	}
+}
