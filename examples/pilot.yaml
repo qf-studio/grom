@@ -100,7 +100,9 @@ widgets:
     stacked: true
     grid: { x: 12, y: 10, w: 12, h: 8 }
     queries:
-      - expr: sum(rate(pilot_tokens_consumed_total[5m])) by (direction)
+      # increase() = tokens consumed in each 5-minute window, so the title
+      # means what it says (rate() would be tokens/second, ~300x smaller).
+      - expr: sum(increase(pilot_tokens_consumed_total[5m])) by (direction)
         legend: "{{direction}}"
 
   # Row 4 — time per issue: two same-unit series overlaid (stacked omitted →
