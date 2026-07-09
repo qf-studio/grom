@@ -57,8 +57,10 @@ widgets:
       # fractionally). Counter is store-hydrated (pilot 2f25dcd0), so
       # restarts don't zero this.
       # TEMP 3h window: the 2026-07-09 17:28 hydration deploy back-filled
-      # +976 pre-ledger merges, which a trailing window reads as merges.
-      # After 2026-07-10 ~17:30, widen to [24h] and retitle "prs / 24h".
+      # +976 pre-ledger merges, and a 20:18 restart re-based the counter 2
+      # LOWER (monotonicity bug, reported on pilot#4134) — both read as
+      # phantom merges in trailing windows. After 2026-07-10 ~20:30, widen
+      # to [24h] and retitle "prs / 24h".
       - expr: sum(increase(pilot_prs_merged_total[3h]))
 
   # Row 2 — CI pass gauge + token breakdown bars.
