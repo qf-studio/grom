@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/qf-studio/grot/internal/config"
-	"github.com/qf-studio/grot/internal/datasource"
-	"github.com/qf-studio/grot/pkg/tui/render"
-	"github.com/qf-studio/grot/pkg/tui/widget"
+	"github.com/qf-studio/grom/internal/config"
+	"github.com/qf-studio/grom/internal/datasource"
+	"github.com/qf-studio/grom/pkg/tui/render"
+	"github.com/qf-studio/grom/pkg/tui/widget"
 )
 
 // FetchWidget runs every query in spec and returns the combined result.

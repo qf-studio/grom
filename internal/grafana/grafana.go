@@ -1,5 +1,5 @@
-// Package grafana imports a Grafana dashboard JSON export into grot's canonical
-// config.Dashboard. It maps the panel subset grot renders (stat, gauge,
+// Package grafana imports a Grafana dashboard JSON export into grom's canonical
+// config.Dashboard. It maps the panel subset grom renders (stat, gauge,
 // bargauge, timeseries) 1:1, promotes row children, and represents everything
 // else as a placeholder in its original grid slot, collecting warnings.
 package grafana
@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/qf-studio/grot/internal/config"
+	"github.com/qf-studio/grom/internal/config"
 )
 
 // Import reads and converts a Grafana dashboard JSON file.
@@ -111,7 +111,7 @@ func convertPanel(p rawPanel) (*config.WidgetSpec, string) {
 	return spec, ""
 }
 
-// mapType maps a Grafana panel type to a grot widget type.
+// mapType maps a Grafana panel type to a grom widget type.
 func mapType(t string) (config.WidgetType, bool) {
 	switch t {
 	case "stat":

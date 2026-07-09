@@ -1,4 +1,4 @@
-// Package theme defines grot's color themes. A Theme is a small set of
+// Package theme defines grom's color themes. A Theme is a small set of
 // semantic color tokens; render primitives derive lipgloss styles from it.
 package theme
 

@@ -10,7 +10,7 @@ import (
 
 	"github.com/prometheus/common/model"
 
-	"github.com/qf-studio/grot/internal/datasource"
+	"github.com/qf-studio/grom/internal/datasource"
 )
 
 // stubServer returns a Prometheus-shaped API server serving canned responses

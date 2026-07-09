@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qf-studio/grot/internal/config"
+	"github.com/qf-studio/grom/internal/config"
 )
 
 func TestImportPilotDashboard(t *testing.T) {

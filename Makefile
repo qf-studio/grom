@@ -1,6 +1,6 @@
 .PHONY: build build-all run demo test test-coverage lint fmt clean install deps release help
 
-BINARY_NAME=grot
+BINARY_NAME=grom
 VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_TIME=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 LDFLAGS=-ldflags "-X main.version=$(VERSION) -X main.buildTime=$(BUILD_TIME)"
@@ -9,14 +9,14 @@ all: build
 
 build:
 	@echo "Building $(BINARY_NAME)..."
-	go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/grot
+	go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/grom
 
 build-all:
 	@echo "Building for all platforms..."
-	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build $(LDFLAGS) -o bin/$(BINARY_NAME)-darwin-amd64 ./cmd/grot
-	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build $(LDFLAGS) -o bin/$(BINARY_NAME)-darwin-arm64 ./cmd/grot
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build $(LDFLAGS) -o bin/$(BINARY_NAME)-linux-amd64 ./cmd/grot
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build $(LDFLAGS) -o bin/$(BINARY_NAME)-linux-arm64 ./cmd/grot
+	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build $(LDFLAGS) -o bin/$(BINARY_NAME)-darwin-amd64 ./cmd/grom
+	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build $(LDFLAGS) -o bin/$(BINARY_NAME)-darwin-arm64 ./cmd/grom
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build $(LDFLAGS) -o bin/$(BINARY_NAME)-linux-amd64 ./cmd/grom
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build $(LDFLAGS) -o bin/$(BINARY_NAME)-linux-arm64 ./cmd/grom
 
 run: build
 	./bin/$(BINARY_NAME)
@@ -53,7 +53,7 @@ clean:
 	rm -f coverage.out coverage.html
 
 install:
-	go install $(LDFLAGS) ./cmd/grot
+	go install $(LDFLAGS) ./cmd/grom
 
 # Release — tag-only; CI (goreleaser) is the sole publisher.
 # Usage: make release V=0.1.0
@@ -72,7 +72,7 @@ endif
 	@echo "✅ Tag v$(V) pushed. CI publishes the release."
 
 help:
-	@echo "grot Makefile:"
+	@echo "grom Makefile:"
 	@echo "  make build          Build the binary"
 	@echo "  make build-all      Build for all platforms"
 	@echo "  make demo           Build and render the demo gallery"

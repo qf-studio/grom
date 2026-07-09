@@ -1,4 +1,4 @@
-module github.com/qf-studio/grot
+module github.com/qf-studio/grom
 
 go 1.25.0
 

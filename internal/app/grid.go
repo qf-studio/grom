@@ -3,7 +3,7 @@ package app
 import (
 	"sort"
 
-	"github.com/qf-studio/grot/internal/config"
+	"github.com/qf-studio/grom/internal/config"
 )
 
 // Rect is a widget's placement in terminal cells, top-left origin.

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/qf-studio/grot/pkg/tui/theme"
+	"github.com/qf-studio/grom/pkg/tui/theme"
 )
 
 func result(vals ...float64) QueryResult {

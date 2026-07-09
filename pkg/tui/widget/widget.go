@@ -1,4 +1,4 @@
-// Package widget provides grot's renderable dashboard widgets: Stat, Gauge,
+// Package widget provides grom's renderable dashboard widgets: Stat, Gauge,
 // BarGauge, and TimeSeries. Widgets receive query results and render
 // themselves into an exact w×h cell rectangle.
 package widget
@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/qf-studio/grot/pkg/tui/render"
-	"github.com/qf-studio/grot/pkg/tui/theme"
+	"github.com/qf-studio/grom/pkg/tui/render"
+	"github.com/qf-studio/grom/pkg/tui/theme"
 )
 
 // Point is a single sample.

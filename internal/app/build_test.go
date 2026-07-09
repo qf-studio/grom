@@ -3,8 +3,8 @@ package app
 import (
 	"testing"
 
-	"github.com/qf-studio/grot/internal/config"
-	"github.com/qf-studio/grot/pkg/tui/widget"
+	"github.com/qf-studio/grom/internal/config"
+	"github.com/qf-studio/grom/pkg/tui/widget"
 )
 
 func fptr(v float64) *float64 { return &v }

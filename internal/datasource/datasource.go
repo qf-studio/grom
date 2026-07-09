@@ -1,4 +1,4 @@
-// Package datasource defines the boundary grot's widgets query against. The
+// Package datasource defines the boundary grom's widgets query against. The
 // interface lives here (the consumer side); concrete backends such as
 // datasource/prom implement it.
 package datasource
@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/qf-studio/grot/pkg/tui/widget"
+	"github.com/qf-studio/grom/pkg/tui/widget"
 )
 
 // Instant requests a single-value (vector) query evaluated at At. A zero At

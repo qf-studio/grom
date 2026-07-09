@@ -1,16 +1,16 @@
-# grot
+# grom
 
-[![ci](https://github.com/qf-studio/grot/actions/workflows/ci.yml/badge.svg)](https://github.com/qf-studio/grot/actions/workflows/ci.yml)
-[![release](https://img.shields.io/github/v/release/qf-studio/grot)](https://github.com/qf-studio/grot/releases)
-[![license](https://img.shields.io/github/license/qf-studio/grot)](LICENSE)
+[![ci](https://github.com/qf-studio/grom/actions/workflows/ci.yml/badge.svg)](https://github.com/qf-studio/grom/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/qf-studio/grom)](https://github.com/qf-studio/grom/releases)
+[![license](https://img.shields.io/github/license/qf-studio/grom)](LICENSE)
 
 **btop-style terminal dashboards for Prometheus & Grafana.**
 
-grot renders Prometheus metrics as polished terminal dashboards — braille
+grom renders Prometheus metrics as polished terminal dashboards — braille
 charts, gradient meters, threshold-colored stats. Point it at your existing
 Grafana dashboard JSON and get the same layout in your terminal.
 
-![grot demo](docs/demo.gif)
+![grom demo](docs/demo.gif)
 
 > Status: early release, under active development.
 
@@ -20,36 +20,36 @@ Grafana dashboard JSON and get the same layout in your terminal.
   is abandoned (2019) and limited to termdash's fixed widgets.
 - [btop](https://github.com/aristocratos/btop) proves terminal dashboards can
   be beautiful — but it only shows system metrics.
-- Nothing renders *your* Grafana dashboards in the terminal. grot does.
+- Nothing renders *your* Grafana dashboards in the terminal. grom does.
 
 ## Install
 
 ```bash
-brew install --cask qf-studio/tap/grot   # macOS / Linux
-go install github.com/qf-studio/grot/cmd/grot@latest
+brew install --cask qf-studio/tap/grom   # macOS / Linux
+go install github.com/qf-studio/grom/cmd/grom@latest
 ```
 
 Prebuilt binaries for darwin/linux (amd64 + arm64) on the
-[releases page](https://github.com/qf-studio/grot/releases).
+[releases page](https://github.com/qf-studio/grom/releases).
 
 ## Quick start
 
 ```bash
 # Widget gallery with fake data — no Prometheus needed
-grot demo --theme tokyo-night
+grom demo --theme tokyo-night
 
 # Works against ANY Prometheus (only uses `up` + scrape_* metrics)
-grot run --config examples/prometheus.yaml --prom http://localhost:9090
+grom run --config examples/prometheus.yaml --prom http://localhost:9090
 
 # Render your existing Grafana dashboard in the terminal
-grot run --grafana-json my-dashboard.json --prom http://localhost:9090
+grom run --grafana-json my-dashboard.json --prom http://localhost:9090
 
 # What maps? Validate an import without running it
-grot import my-dashboard.json          # summary + warnings
-grot import --check my-dashboard.json  # non-zero exit on any warning (CI)
+grom import my-dashboard.json          # summary + warnings
+grom import --check my-dashboard.json  # non-zero exit on any warning (CI)
 
 # One static frame to stdout (snapshots, docs, cron)
-grot run -c dashboard.yaml --prom http://localhost:9090 --once
+grom run -c dashboard.yaml --prom http://localhost:9090 --once
 ```
 
 ## Keys
@@ -102,7 +102,7 @@ widgets:
 
 Notes:
 
-- `grid` is optional — omit it everywhere and grot auto-flows widgets into
+- `grid` is optional — omit it everywhere and grom auto-flows widgets into
   rows with responsive breakpoints (1 column < 80 cols, 2 < 140, 4 beyond).
 - **timeseries** always query a range (step auto-sized to the chart width);
   **stat** joins in with `sparkline: true` (value + trend band); gauges and
@@ -116,10 +116,10 @@ Working examples: [`examples/prometheus.yaml`](examples/prometheus.yaml)
 
 ## Grafana import
 
-`grot run --grafana-json` / `grot import` accept a dashboard JSON export —
+`grom run --grafana-json` / `grom import` accept a dashboard JSON export —
 bare or API-wrapped (`{"dashboard": {...}}`).
 
-| Grafana | grot |
+| Grafana | grom |
 |---|---|
 | `stat`, `gauge`, `bargauge`, `timeseries` panels | 1:1 widgets |
 | `gridPos` | 24-column layout, scaled to your terminal |
@@ -142,7 +142,7 @@ bare or API-wrapped (`{"dashboard": {...}}`).
 ## Development
 
 ```bash
-make build   # build ./bin/grot
+make build   # build ./bin/grom
 make demo    # render the widget gallery
 make test    # go test -race
 make lint    # golangci-lint

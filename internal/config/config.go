@@ -1,4 +1,4 @@
-// Package config defines grot's canonical dashboard model and a YAML loader.
+// Package config defines grom's canonical dashboard model and a YAML loader.
 // Both native YAML configs and (later) Grafana JSON import produce a Dashboard.
 package config
 
@@ -20,12 +20,12 @@ const (
 	TypeGauge      WidgetType = "gauge"
 	TypeBarGauge   WidgetType = "bargauge"
 	TypeTimeSeries WidgetType = "timeseries"
-	// TypePlaceholder marks a panel grot cannot render (produced by the Grafana
+	// TypePlaceholder marks a panel grom cannot render (produced by the Grafana
 	// importer for unsupported panel types). It carries no queries.
 	TypePlaceholder WidgetType = "placeholder"
 )
 
-// Dashboard is grot's canonical dashboard model.
+// Dashboard is grom's canonical dashboard model.
 type Dashboard struct {
 	Title   string       `yaml:"title"`
 	Theme   string       `yaml:"theme"`

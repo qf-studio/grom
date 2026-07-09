@@ -1,11 +1,11 @@
 package widget
 
 import (
-	"github.com/qf-studio/grot/pkg/tui/render"
-	"github.com/qf-studio/grot/pkg/tui/theme"
+	"github.com/qf-studio/grom/pkg/tui/render"
+	"github.com/qf-studio/grom/pkg/tui/theme"
 )
 
-// Placeholder fills a panel slot grot cannot render — an unsupported Grafana
+// Placeholder fills a panel slot grom cannot render — an unsupported Grafana
 // panel type — with a quiet centered note, so an imported dashboard keeps its
 // layout instead of leaving a hole.
 type Placeholder struct {

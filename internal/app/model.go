@@ -10,10 +10,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/qf-studio/grot/internal/config"
-	"github.com/qf-studio/grot/internal/datasource"
-	"github.com/qf-studio/grot/pkg/tui/theme"
-	"github.com/qf-studio/grot/pkg/tui/widget"
+	"github.com/qf-studio/grom/internal/config"
+	"github.com/qf-studio/grom/internal/datasource"
+	"github.com/qf-studio/grom/pkg/tui/theme"
+	"github.com/qf-studio/grom/pkg/tui/widget"
 )
 
 // rangePresets are the windows the +/- keys step through.
@@ -32,7 +32,7 @@ type (
 	}
 )
 
-// Model is grot's Bubble Tea application: a focusable, zoomable grid of widgets
+// Model is grom's Bubble Tea application: a focusable, zoomable grid of widgets
 // backed by a polling datasource. Fetches run as concurrent Cmds guarded so a
 // slow query never blocks Update or stacks up behind itself.
 type Model struct {
@@ -131,7 +131,7 @@ func (m Model) View() string {
 	if !m.ready {
 		return ""
 	}
-	header := headerLine(coalesce(m.dash.Title, "grot"), m.th, formatRange(m.rng), m.zoomed, m.staleNames(), m.width)
+	header := headerLine(coalesce(m.dash.Title, "grom"), m.th, formatRange(m.rng), m.zoomed, m.staleNames(), m.width)
 	if m.helpShown {
 		return header + "\n" + helpView(m.th, m.width, m.contentHeight())
 	}

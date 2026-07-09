@@ -5,8 +5,8 @@ package app
 import (
 	"fmt"
 
-	"github.com/qf-studio/grot/internal/config"
-	"github.com/qf-studio/grot/pkg/tui/widget"
+	"github.com/qf-studio/grom/internal/config"
+	"github.com/qf-studio/grom/pkg/tui/widget"
 )
 
 // BuildWidget constructs a renderable widget from a spec.

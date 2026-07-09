@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/qf-studio/grot/pkg/tui/render"
-	"github.com/qf-studio/grot/pkg/tui/theme"
+	"github.com/qf-studio/grom/pkg/tui/render"
+	"github.com/qf-studio/grom/pkg/tui/theme"
 )
 
 // TimeSeries renders series as a braille area chart — the btop texture:

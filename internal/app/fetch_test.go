@@ -3,7 +3,7 @@ package app
 import (
 	"testing"
 
-	"github.com/qf-studio/grot/internal/config"
+	"github.com/qf-studio/grom/internal/config"
 )
 
 func TestUseRange(t *testing.T) {

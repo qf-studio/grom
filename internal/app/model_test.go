@@ -9,10 +9,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/qf-studio/grot/internal/config"
-	"github.com/qf-studio/grot/internal/datasource"
-	"github.com/qf-studio/grot/pkg/tui/theme"
-	"github.com/qf-studio/grot/pkg/tui/widget"
+	"github.com/qf-studio/grom/internal/config"
+	"github.com/qf-studio/grom/internal/datasource"
+	"github.com/qf-studio/grom/pkg/tui/theme"
+	"github.com/qf-studio/grom/pkg/tui/widget"
 )
 
 // fakeDS returns canned data and counts calls.

@@ -1,9 +1,9 @@
-# grot dashboard that works against ANY Prometheus — no exporters required.
+# grom dashboard that works against ANY Prometheus — no exporters required.
 # It uses only `up` and the scrape_* metrics Prometheus attaches to every
 # target it scrapes. If your Prometheus also scrapes itself (the default
 # packaged config), swap in richer prometheus_* metrics where you like.
 #
-# Run: grot run --config examples/prometheus.yaml --prom http://localhost:9090
+# Run: grom run --config examples/prometheus.yaml --prom http://localhost:9090
 title: prometheus
 theme: tokyo-night
 refresh: 10s

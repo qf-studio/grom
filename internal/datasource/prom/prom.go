@@ -13,8 +13,8 @@ import (
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 
-	"github.com/qf-studio/grot/internal/datasource"
-	"github.com/qf-studio/grot/pkg/tui/widget"
+	"github.com/qf-studio/grom/internal/datasource"
+	"github.com/qf-studio/grom/pkg/tui/widget"
 )
 
 // Client queries a Prometheus server.

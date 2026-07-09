@@ -1,6 +1,6 @@
-# grot native dashboard config — Pilot metrics from Prometheus.
+# grom native dashboard config — Pilot metrics from Prometheus.
 # A btop-style overview: headline stats, a gauge + bar gauge, and two charts.
-# Run: grot run --config examples/pilot.yaml --prom http://localhost:9093
+# Run: grom run --config examples/pilot.yaml --prom http://localhost:9093
 title: pilot
 theme: pilot
 refresh: 10s

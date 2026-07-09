@@ -8,17 +8,17 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/qf-studio/grot/internal/config"
-	"github.com/qf-studio/grot/pkg/tui/render"
-	"github.com/qf-studio/grot/pkg/tui/theme"
-	"github.com/qf-studio/grot/pkg/tui/widget"
+	"github.com/qf-studio/grom/internal/config"
+	"github.com/qf-studio/grom/pkg/tui/render"
+	"github.com/qf-studio/grom/pkg/tui/theme"
+	"github.com/qf-studio/grom/pkg/tui/widget"
 )
 
 // StaticFrame renders a one-shot header + grid at the given viewport, with no
 // focus. Widgets must already hold their fetched results.
 func StaticFrame(dash *config.Dashboard, widgets []widget.Widget, th theme.Theme, termW, termH int) string {
 	rects := GridLayout(dash.Widgets, termW, termH)
-	title := coalesce(dash.Title, "grot")
+	title := coalesce(dash.Title, "grom")
 	header := headerLine(title, th, formatRange(dash.Range.Duration()), false, nil, termW)
 	return header + "\n" + composeGrid(widgets, rects, th, -1)
 }

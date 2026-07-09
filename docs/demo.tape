@@ -11,12 +11,12 @@ Set Padding 12
 Set WindowBar Colorful
 
 Hide
-Type "go build -o grot ./cmd/grot && clear"
+Type "go build -o grom ./cmd/grom && clear"
 Enter
 Sleep 3s
 Show
 
-Type "./grot run --config examples/pilot.yaml --prom http://localhost:9093"
+Type "./grom run --config examples/pilot.yaml --prom http://localhost:9093"
 Sleep 500ms
 Enter
 Sleep 4s
