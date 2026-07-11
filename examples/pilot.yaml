@@ -127,3 +127,56 @@ widgets:
         legend: to merge
       - expr: sum(increase(pilot_execution_duration_seconds_sum[1h])) / (sum(increase(pilot_execution_duration_seconds_count[1h])) > 0)
         legend: exec
+
+  # Row 5 — this run / right now: the process-scoped view. Rows 1-4 are the
+  # business (lifetime + recent windows); this row is the daemon.
+  - type: stat
+    title: execs (this run)
+    unit: short
+    decimals: 0
+    sparkline: true
+    grid: { x: 0, y: 26, w: 6, h: 4 }
+    queries:
+      # Deliberately session-scoped: this histogram count is the one counter
+      # NOT store-hydrated, so it resets on every daemon restart — the
+      # sparkline sawtooth marks each restart. If pilot#4134 ships hydration
+      # for it, this card silently becomes lifetime and needs a new source.
+      - expr: sum(pilot_execution_duration_seconds_count)
+
+  - type: stat
+    title: queue
+    unit: short
+    decimals: 0
+    sparkline: true
+    grid: { x: 6, y: 26, w: 6, h: 4 }
+    thresholds:
+      - color: green
+      - value: 5
+        color: yellow
+      - value: 20
+        color: red
+    queries:
+      - expr: pilot_queue_depth
+
+  - type: stat
+    title: active prs
+    unit: short
+    decimals: 0
+    sparkline: true
+    grid: { x: 12, y: 26, w: 6, h: 4 }
+    queries:
+      - expr: sum(pilot_active_prs)
+
+  - type: stat
+    title: api errors
+    unit: percentunit
+    sparkline: true
+    grid: { x: 18, y: 26, w: 6, h: 4 }
+    thresholds:
+      - color: green
+      - value: 0.05
+        color: yellow
+      - value: 0.2
+        color: red
+    queries:
+      - expr: pilot_api_error_rate
