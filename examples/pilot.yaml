@@ -56,11 +56,12 @@ widgets:
       # Session throughput (decimals: 0 — increase() extrapolates
       # fractionally). Counter is store-hydrated (pilot 2f25dcd0), so
       # restarts don't zero this.
-      # TEMP 3h window: the 2026-07-09 17:28 hydration deploy back-filled
-      # +976 pre-ledger merges, and a 20:18 restart re-based the counter 2
-      # LOWER (monotonicity bug, reported on pilot#4134) — both read as
-      # phantom merges in trailing windows. After 2026-07-10 ~20:30, widen
-      # to [24h] and retitle "prs / 24h".
+      # TEMP 3h window, pinned until pilot#4134's monotonicity fix ships:
+      # store-hydration can re-base the counter LOWER on restart (observed
+      # 2026-07-09 20:18 and 2026-07-10 17:18), which Prometheus reads as a
+      # reset — every restart poisons trailing windows for the window
+      # length. 3h caps the damage. Widen to [24h] + retitle "prs / 24h"
+      # once hydration is clamped to max(recount, last-served).
       - expr: sum(increase(pilot_prs_merged_total[3h]))
 
   # Row 2 — CI pass gauge + token breakdown bars.
