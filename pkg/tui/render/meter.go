@@ -86,9 +86,14 @@ func GradientMeter(frac float64, width int, stops []string, empty lipgloss.Style
 
 // SegmentMeter renders a btop-style segmented meter: discrete square cells,
 // filled portion swept through a color gradient, remainder in the track
-// style (dark squares):
+// style:
 //
 //	■■■■■■■■■■■■□□□□□
+//
+// The filled cells use a solid glyph (■) and the track uses a hollow one (□)
+// so the fill fraction stays legible even when color is unavailable (piped
+// output, NO_COLOR, --once frames pasted into an issue). Encoding the fill in
+// color alone made every bar look full-width in monochrome.
 func SegmentMeter(frac float64, width int, stops []string, track lipgloss.Style) string {
 	if width <= 0 {
 		return ""
@@ -110,7 +115,7 @@ func SegmentMeter(frac float64, width int, stops []string, track lipgloss.Style)
 		b.WriteString(styles[i].Render("■"))
 	}
 	if width-filled > 0 {
-		b.WriteString(track.Render(strings.Repeat("■", width-filled)))
+		b.WriteString(track.Render(strings.Repeat("□", width-filled)))
 	}
 	return b.String()
 }

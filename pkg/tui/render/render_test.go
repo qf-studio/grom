@@ -149,6 +149,29 @@ func TestMeterWidth(t *testing.T) {
 	}
 }
 
+// TestSegmentMeterLegibleWithoutColor guards the bargauge bug where the filled
+// and track cells used the same glyph, so the fill fraction was carried by
+// color alone and every bar looked full-width in monochrome output.
+func TestSegmentMeterLegibleWithoutColor(t *testing.T) {
+	plain := lipgloss.NewStyle() // no color, as when ANSI is stripped
+	const width = 20
+	for _, tc := range []struct {
+		frac       float64
+		wantFilled int
+	}{
+		{0, 0}, {0.02, 0}, {0.5, 10}, {0.875, 18}, {1, 20},
+	} {
+		out := SegmentMeter(tc.frac, width, []string{"#0f0", "#0f0"}, plain)
+		if got := lipgloss.Width(out); got != width {
+			t.Errorf("frac %v: width %d, want %d", tc.frac, got, width)
+		}
+		filled := strings.Count(out, "■")
+		if filled != tc.wantFilled {
+			t.Errorf("frac %v: filled ■ = %d, want %d (bar carries no width info)", tc.frac, filled, tc.wantFilled)
+		}
+	}
+}
+
 func TestFormatCompact(t *testing.T) {
 	tests := []struct {
 		in   float64
