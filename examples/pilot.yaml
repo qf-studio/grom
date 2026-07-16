@@ -1,5 +1,7 @@
 # grom native dashboard config — Pilot metrics from Prometheus.
-# A btop-style overview: headline stats, a gauge + bar gauge, and two charts.
+# Drift-watch layout: delivery headline → quality by model → pipeline latency
+# → tokens/cost → guard counters. Every panel is verified against the live
+# metric set (2026-07-16); comments note upstream data caveats.
 # Run: grom run --config examples/pilot.yaml --prom http://localhost:9093
 title: pilot
 theme: pilot
@@ -13,7 +15,6 @@ widgets:
     unit: percentunit
     sparkline: true
     grid: { x: 0, y: 0, w: 6, h: 4 }
-    # Thresholds mirror the web pilot-dashboard.json Issue Success Rate panel.
     thresholds:
       - color: red
       - value: 0.5
@@ -21,29 +22,20 @@ widgets:
       - value: 0.8
         color: green
     queries:
-      # Issue-level: shipped / attempted, deduped across retries — same metric as
-      # the web dashboard. The per-attempt pilot_success_rate reads higher (retries
-      # count in its favor) and is deprecated for delivery health (Pilot TASK-392).
+      # Issue-level: shipped / attempted, deduped across retries. The
+      # per-attempt pilot_success_rate reads higher (retries count in its
+      # favor) and is deprecated for delivery health (Pilot TASK-392).
       - expr: pilot_issue_level_success_rate
-
-  - type: stat
-    title: tokens
-    unit: short
-    sparkline: true
-    grid: { x: 6, y: 0, w: 6, h: 4 }
-    queries:
-      - expr: sum(pilot_tokens_consumed_total)
 
   - type: stat
     title: cost / shipped
     unit: currencyUSD
     decimals: 2
     sparkline: true
-    grid: { x: 12, y: 0, w: 6, h: 4 }
+    grid: { x: 6, y: 0, w: 6, h: 4 }
     queries:
       # Cost per *shipped* issue — same denominator family as the success-rate
-      # card (issues_processed_total counts attempt outcomes, not unique issues).
-      # `> 0` guards the zero-denominator case: renders "no data", not +Inf.
+      # card. `> 0` guards the zero-denominator case: "no data", not +Inf.
       - expr: sum(pilot_execution_cost_usd_total) / (sum(pilot_issues_shipped_total) > 0)
 
   - type: stat
@@ -51,26 +43,38 @@ widgets:
     unit: short
     decimals: 0
     sparkline: true
-    grid: { x: 18, y: 0, w: 6, h: 4 }
+    grid: { x: 12, y: 0, w: 6, h: 4 }
     queries:
-      # Session throughput (decimals: 0 — increase() extrapolates
-      # fractionally). Counter is store-hydrated (pilot 2f25dcd0), so
-      # restarts don't zero this.
-      # TEMP 3h window, pinned until pilot#4134's monotonicity fix ships:
-      # store-hydration can re-base the counter LOWER on restart (observed
-      # 2026-07-09 20:18 and 2026-07-10 17:18), which Prometheus reads as a
-      # reset — every restart poisons trailing windows for the window
-      # length. 3h caps the damage. Widen to [24h] + retitle "prs / 24h"
-      # once hydration is clamped to max(recount, last-served).
+      # Session throughput. 3h window retained even though pilot#4134 closed:
+      # 2026-07-16 21:29Z four autopilot merges did NOT increment
+      # pilot_prs_merged_total (flat at 1143) — counter has a miss path, so
+      # trailing windows under-read. Widen to [24h] once that's fixed.
       - expr: sum(increase(pilot_prs_merged_total[3h]))
 
-  # Row 2 — CI pass gauge + token breakdown bars.
+  - type: stat
+    title: time to ship (24h)
+    unit: s
+    decimals: 0
+    sparkline: true
+    grid: { x: 18, y: 0, w: 6, h: 4 }
+    thresholds:
+      - color: green
+      - value: 3600
+        color: yellow
+      - value: 10800
+        color: red
+    queries:
+      # Mean issue→PR latency over the trailing day (TASK-393 M1 histogram).
+      # Rising trend with a stable queue = executor drift, not load.
+      - expr: sum(increase(pilot_time_to_pr_seconds_sum[24h])) / (sum(increase(pilot_time_to_pr_seconds_count[24h])) > 0)
+
+  # Row 2 — quality: CI pass gauge + per-model scoring + per-model spend.
   - type: gauge
-    title: pr delivery
+    title: ci pass rate
     unit: percentunit
     min: 0
     max: 1
-    grid: { x: 0, y: 4, w: 12, h: 6 }
+    grid: { x: 0, y: 4, w: 8, h: 6 }
     thresholds:
       - color: red
       - value: 0.8
@@ -78,78 +82,97 @@ widgets:
       - value: 0.95
         color: green
     queries:
-      # Lifetime PRs delivered vs failed. Pilot exports no CI-specific pass/fail
-      # counter yet — once pilot#4134 ships pilot_ci_runs_total{result}, repoint
-      # this gauge and retitle it "ci pass rate".
-      # `> 0` guards the zero-denominator case: renders "no data", not +Inf.
-      - expr: sum(pilot_prs_merged_total) / ((sum(pilot_prs_merged_total) + sum(pilot_prs_failed_total)) > 0)
+      # pilot_ci_runs_total{result} shipped in pilot#4134 — this replaces the
+      # old merged/(merged+failed) "pr delivery" proxy gauge.
+      - expr: sum(pilot_ci_runs_total{result="pass"}) / (sum(pilot_ci_runs_total) > 0)
 
+  - type: bargauge
+    title: success by model
+    unit: percentunit
+    grid: { x: 8, y: 4, w: 8, h: 6 }
+    queries:
+      # Per-attempt success share per model — the scoring drift view: a model
+      # whose bar sags after a version bump or prompt change is regressing.
+      - expr: sum(pilot_executions_total{result="success"}) by (model) / (sum(pilot_executions_total) by (model) > 0)
+        legend: "{{model}}"
+
+  - type: bargauge
+    title: cost by model
+    unit: currencyUSD
+    grid: { x: 16, y: 4, w: 8, h: 6 }
+    queries:
+      - expr: sum(pilot_execution_cost_usd_total) by (model)
+        legend: "{{model}}"
+
+  # Row 3 — the pipeline, end to end. Four same-unit series overlaid (first
+  # fills as area, later ones draw as lines). 1h windows: each point is the
+  # mean over events in that hour; gaps mean no activity in the stage.
+  # queue wait → time to pr → approval wait → time to merge is the full
+  # issue lifecycle; whichever line inflates names the drifting stage.
+  - type: timeseries
+    title: pipeline latency (1h p50)
+    unit: s
+    grid: { x: 0, y: 10, w: 24, h: 8 }
+    queries:
+      # Medians, not means: queue_wait carries multi-day outliers (observed
+      # 190h backfilled samples) that make a mean chart unreadable.
+      - expr: histogram_quantile(0.50, sum(rate(pilot_queue_wait_seconds_bucket[1h])) by (le))
+        legend: queue wait
+      - expr: histogram_quantile(0.50, sum(rate(pilot_time_to_pr_seconds_bucket[1h])) by (le))
+        legend: to pr
+      - expr: histogram_quantile(0.50, sum(rate(pilot_approval_wait_seconds_bucket[1h])) by (le))
+        legend: approval wait
+      - expr: histogram_quantile(0.50, sum(rate(pilot_pr_time_to_merge_seconds_bucket[1h])) by (le))
+        legend: to merge
+
+  # Row 4 — tokens: lifetime breakdown + burn rate.
   - type: bargauge
     title: tokens by direction
     unit: short
-    grid: { x: 12, y: 4, w: 12, h: 6 }
+    grid: { x: 0, y: 18, w: 8, h: 8 }
     queries:
       - expr: sum(pilot_tokens_consumed_total) by (direction)
         legend: "{{direction}}"
-
-  # Row 3 — always-defined charts: a cumulative cost curve and stacked token rate.
-  # Since pilot#4029 the counter is lifetime (store-hydrated), so the curve is the
-  # true all-time spend, not since-restart.
-  - type: timeseries
-    title: cumulative cost
-    unit: currencyUSD
-    grid: { x: 0, y: 10, w: 12, h: 8 }
-    queries:
-      - expr: sum(pilot_execution_cost_usd_total)
-        legend: cost
 
   - type: timeseries
     title: tokens / 5m
     unit: short
     stacked: true
-    grid: { x: 12, y: 10, w: 12, h: 8 }
+    grid: { x: 8, y: 18, w: 16, h: 8 }
     queries:
       # increase() = tokens consumed in each 5-minute window, so the title
       # means what it says (rate() would be tokens/second, ~300x smaller).
       - expr: sum(increase(pilot_tokens_consumed_total[5m])) by (direction)
         legend: "{{direction}}"
 
-  # Row 4 — time per issue: two same-unit series overlaid (stacked omitted →
-  # overlay: first query fills as area, later ones draw as lines on top).
-  # 1h windows: each point is the average over merges/executions in that hour;
-  # gaps mean no activity. exec durations are session-scoped upstream (not yet
-  # store-hydrated — asked in pilot#4134), so that line starts sparse.
+  # Row 5 — spend curve + outcome mix. Since pilot#4029 the cost counter is
+  # lifetime (store-hydrated), so the curve is true all-time spend.
   - type: timeseries
-    title: time / issue
-    unit: s
-    grid: { x: 0, y: 18, w: 24, h: 8 }
+    title: cumulative cost
+    unit: currencyUSD
+    grid: { x: 0, y: 26, w: 12, h: 8 }
     queries:
-      - expr: sum(increase(pilot_pr_time_to_merge_seconds_sum[1h])) / (sum(increase(pilot_pr_time_to_merge_seconds_count[1h])) > 0)
-        legend: to merge
-      - expr: sum(increase(pilot_execution_duration_seconds_sum[1h])) / (sum(increase(pilot_execution_duration_seconds_count[1h])) > 0)
-        legend: exec
+      - expr: sum(pilot_execution_cost_usd_total)
+        legend: cost
 
-  # Row 5 — this run / right now: the process-scoped view. Rows 1-4 are the
-  # business (lifetime + recent windows); this row is the daemon.
-  - type: stat
-    title: execs (this run)
+  - type: timeseries
+    title: execs by result / 1h
     unit: short
-    decimals: 0
-    sparkline: true
-    grid: { x: 0, y: 26, w: 6, h: 4 }
+    stacked: true
+    grid: { x: 12, y: 26, w: 12, h: 8 }
     queries:
-      # Deliberately session-scoped: this histogram count is the one counter
-      # NOT store-hydrated, so it resets on every daemon restart — the
-      # sparkline sawtooth marks each restart. If pilot#4134 ships hydration
-      # for it, this card silently becomes lifetime and needs a new source.
-      - expr: sum(pilot_execution_duration_seconds_count)
+      # Outcome mix per hour — a failure/stall band widening while success
+      # holds flat is the earliest drift signal the executor emits.
+      - expr: sum(increase(pilot_executions_total[1h])) by (result)
+        legend: "{{result}}"
 
+  # Row 6 — right now: live pressure gauges. Process-scoped where noted.
   - type: stat
     title: queue
     unit: short
     decimals: 0
     sparkline: true
-    grid: { x: 6, y: 26, w: 6, h: 4 }
+    grid: { x: 0, y: 34, w: 6, h: 4 }
     thresholds:
       - color: green
       - value: 5
@@ -160,11 +183,26 @@ widgets:
       - expr: pilot_queue_depth
 
   - type: stat
+    title: failed queue
+    unit: short
+    decimals: 0
+    sparkline: true
+    grid: { x: 6, y: 34, w: 6, h: 4 }
+    thresholds:
+      - color: green
+      - value: 1
+        color: red
+    queries:
+      # Tasks parked in failed state — anything nonzero is a wedged issue
+      # (the GH-4372 claim-blocked class shows up here first).
+      - expr: pilot_failed_queue_depth
+
+  - type: stat
     title: active prs
     unit: short
     decimals: 0
     sparkline: true
-    grid: { x: 12, y: 26, w: 6, h: 4 }
+    grid: { x: 12, y: 34, w: 6, h: 4 }
     queries:
       - expr: sum(pilot_active_prs)
 
@@ -172,7 +210,7 @@ widgets:
     title: api errors
     unit: percentunit
     sparkline: true
-    grid: { x: 18, y: 26, w: 6, h: 4 }
+    grid: { x: 18, y: 34, w: 6, h: 4 }
     thresholds:
       - color: green
       - value: 0.05
@@ -181,3 +219,67 @@ widgets:
         color: red
     queries:
       - expr: pilot_api_error_rate
+
+  # Row 7 — guard counters (24h deltas): each one nonzero names a specific
+  # failure class. All should sit at 0 on a healthy day.
+  - type: stat
+    title: breaker trips 24h
+    unit: short
+    decimals: 0
+    sparkline: true
+    grid: { x: 0, y: 38, w: 6, h: 4 }
+    thresholds:
+      - color: green
+      - value: 1
+        color: yellow
+      - value: 3
+        color: red
+    queries:
+      # CAVEAT: store-hydration re-bases this counter on restart, which
+      # increase() reads as resets and overcounts (observed 456 vs a lifetime
+      # total of 190). Treat the number as "activity happened", read the
+      # sparkline slope for how much.
+      - expr: sum(increase(pilot_circuit_breaker_trips_total[24h]))
+
+  - type: stat
+    title: approval misses 24h
+    unit: short
+    decimals: 0
+    sparkline: true
+    grid: { x: 6, y: 38, w: 6, h: 4 }
+    thresholds:
+      - color: green
+      - value: 1
+        color: red
+    queries:
+      # Approval decisions that failed to persist (GH-4159 family) — the
+      # "PR sat in awaiting_approval forever" precursor.
+      - expr: sum(increase(pilot_approval_persist_misses_total[24h]))
+
+  - type: stat
+    title: approval submit fails 24h
+    unit: short
+    decimals: 0
+    sparkline: true
+    grid: { x: 12, y: 38, w: 6, h: 4 }
+    thresholds:
+      - color: green
+      - value: 1
+        color: red
+    queries:
+      # pilot_approval_submit_failures_total shipped in pilot#4386
+      # (2026-07-16, the undeliverable-approval-request fix). Renders "no
+      # data" until the daemon restarts onto that build — expected.
+      - expr: sum(increase(pilot_approval_submit_failures_total[24h]))
+
+  - type: stat
+    title: execs (this run)
+    unit: short
+    decimals: 0
+    sparkline: true
+    grid: { x: 18, y: 38, w: 6, h: 4 }
+    queries:
+      # Deliberately session-scoped: this histogram count is NOT
+      # store-hydrated, so it resets on every daemon restart — the
+      # sparkline sawtooth marks each restart.
+      - expr: sum(pilot_execution_duration_seconds_count)
