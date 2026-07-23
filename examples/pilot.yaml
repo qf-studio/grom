@@ -45,11 +45,14 @@ widgets:
     sparkline: true
     grid: { x: 12, y: 0, w: 6, h: 4 }
     queries:
-      # Session throughput. 3h window retained even though pilot#4134 closed:
-      # 2026-07-16 21:29Z four autopilot merges did NOT increment
-      # pilot_prs_merged_total (flat at 1143) — counter has a miss path, so
-      # trailing windows under-read. Widen to [24h] once that's fixed.
-      - expr: sum(increase(pilot_prs_merged_total[3h]))
+      # Session throughput. max-min instead of increase(): the counter is
+      # store-hydrated at boot and the hydration base can land BELOW the
+      # pre-restart live value (merge-increment miss path) — Prometheus reads
+      # that dip as a counter reset and increase() adds the full ~1.2k base
+      # as "new PRs" (observed 1236 on the 2026-07-23 12:18Z restart).
+      # max-min never adds the base; worst case it undercounts across the
+      # restart boundary by the pre-restart window portion.
+      - expr: sum(max_over_time(pilot_prs_merged_total[3h]) - min_over_time(pilot_prs_merged_total[3h]))
 
   - type: stat
     title: time to ship (24h)
@@ -93,6 +96,9 @@ widgets:
     queries:
       # Per-attempt success share per model — the scoring drift view: a model
       # whose bar sags after a version bump or prompt change is regressing.
+      # NOTE: lifetime (hydrated from the all-time ledger) — retired models
+      # appear legitimately: glm-5.1 = 7 execs 2026-04-12..14 (OpenRouter
+      # experiment), claude-opus-4-7[1m] = 1 exec (1M-context trial).
       - expr: sum(pilot_executions_total{result="success"}) by (model) / (sum(pilot_executions_total) by (model) > 0)
         legend: "{{model}}"
 
@@ -140,9 +146,12 @@ widgets:
     stacked: true
     grid: { x: 8, y: 18, w: 16, h: 8 }
     queries:
-      # increase() = tokens consumed in each 5-minute window, so the title
-      # means what it says (rate() would be tokens/second, ~300x smaller).
-      - expr: sum(increase(pilot_tokens_consumed_total[5m])) by (direction)
+      # max-min per window (see prs/3h note: hydrated counter, increase()
+      # explodes across restarts). Two data caveats: (1) token counters
+      # increment at execution FINALIZE, not during streaming — mid-execution
+      # this legitimately reads 0 with executors busy; (2) the restart tick
+      # itself shows the hydration delta, read the neighbors not the spike.
+      - expr: sum(max_over_time(pilot_tokens_consumed_total[5m]) - min_over_time(pilot_tokens_consumed_total[5m])) by (direction)
         legend: "{{direction}}"
 
   # Row 5 — spend curve + outcome mix. Since pilot#4029 the cost counter is
@@ -163,7 +172,9 @@ widgets:
     queries:
       # Outcome mix per hour — a failure/stall band widening while success
       # holds flat is the earliest drift signal the executor emits.
-      - expr: sum(increase(pilot_executions_total[1h])) by (result)
+      # max-min: hydrated counter, increase() overcounts across restarts
+      # (see prs/3h note).
+      - expr: sum(max_over_time(pilot_executions_total[1h]) - min_over_time(pilot_executions_total[1h])) by (result)
         legend: "{{result}}"
 
   # Row 6 — right now: live pressure gauges. Process-scoped where noted.
@@ -235,11 +246,10 @@ widgets:
       - value: 3
         color: red
     queries:
-      # CAVEAT: store-hydration re-bases this counter on restart, which
-      # increase() reads as resets and overcounts (observed 456 vs a lifetime
-      # total of 190). Treat the number as "activity happened", read the
-      # sparkline slope for how much.
-      - expr: sum(increase(pilot_circuit_breaker_trips_total[24h]))
+      # max-min fixes the previously documented overcount here (456 vs a
+      # lifetime total of 190): store-hydration re-bases this counter on
+      # restart and increase() read that as a reset. See prs/3h note.
+      - expr: sum(max_over_time(pilot_circuit_breaker_trips_total[24h]) - min_over_time(pilot_circuit_breaker_trips_total[24h]))
 
   - type: stat
     title: approval misses 24h
