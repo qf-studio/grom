@@ -1,7 +1,8 @@
 # grom native dashboard config — Pilot metrics from Prometheus.
 # Drift-watch layout: delivery headline → quality by model → pipeline latency
 # → tokens/cost → guard counters. Every panel is verified against the live
-# metric set (2026-07-16); comments note upstream data caveats.
+# metric set (2026-07-16; headline cards re-verified 2026-08-05 against the
+# pilot#4735 rolling-window gauges); comments note upstream data caveats.
 # Run: grom run --config examples/pilot.yaml --prom http://localhost:9093
 title: pilot
 theme: pilot
@@ -11,7 +12,7 @@ range: 6h
 widgets:
   # Row 1 — headline stats with trend bands (24-col grid, four across).
   - type: stat
-    title: success rate
+    title: delivery rate (30d)
     unit: percentunit
     sparkline: true
     grid: { x: 0, y: 0, w: 6, h: 4 }
@@ -22,21 +23,32 @@ widgets:
       - value: 0.8
         color: green
     queries:
-      # Issue-level: shipped / attempted, deduped across retries. The
-      # per-attempt pilot_success_rate reads higher (retries count in its
-      # favor) and is deprecated for delivery health (Pilot TASK-392).
-      - expr: pilot_issue_level_success_rate
+      # Rolling-window delivery: distinct issues shipped / attempted inside
+      # the daemon's stats window (default 30d), canary-excluded, deduped
+      # across retries (pilot#4735). Replaces pilot_issue_level_success_rate,
+      # which is lifetime and era-blends models — it reads ~0.799 forever
+      # while the honest last-30d figure is ~0.81 on a 5x costlier model mix.
+      # No {window=} matcher on purpose: the label value follows the daemon's
+      # stats_window_days knob. A hard 0 here means "daemon predates the
+      # pilot#4739 aggregate fix" (first train ≥ 2026-08-06), not "nothing
+      # shipped" — the pre-fix aggregate served window="0d" 0.
+      - expr: pilot_window_delivery_rate
 
   - type: stat
-    title: cost / shipped
+    title: cost / shipped (30d)
     unit: currencyUSD
     decimals: 2
     sparkline: true
     grid: { x: 6, y: 0, w: 6, h: 4 }
     queries:
-      # Cost per *shipped* issue — same denominator family as the success-rate
-      # card. `> 0` guards the zero-denominator case: "no data", not +Inf.
-      - expr: sum(pilot_execution_cost_usd_total) / (sum(pilot_issues_shipped_total) > 0)
+      # Rolling-window cost per delivered issue (pilot#4735): window spend /
+      # distinct issues with a completed execution, server-computed from ONE
+      # canary-excluded population — replaces the lifetime sum/sum proxy,
+      # which era-blends models (read ~$0.80 while the honest last-30d figure
+      # is ~$3.66). Gauge refreshes on a 5-min daemon ticker, not per-scrape.
+      # 0 until the daemon carries the pilot#4739 aggregate fix (see the
+      # delivery-rate card note).
+      - expr: pilot_window_cost_per_delivered_usd
 
   - type: stat
     title: prs / 3h
