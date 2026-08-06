@@ -86,13 +86,15 @@ widgets:
       # Rising trend with a stable queue = executor drift, not load.
       - expr: sum(increase(pilot_time_to_pr_seconds_sum[24h])) / (sum(increase(pilot_time_to_pr_seconds_count[24h])) > 0)
 
-  # Row 2 — quality: CI pass gauge + per-model scoring + per-model spend.
+  # Row 2 — quality & pipeline as a 2×2 block:
+  #   ci pass rate      | pipeline latency
+  #   success by model  | cost by model
   - type: gauge
     title: ci pass rate
     unit: percentunit
     min: 0
     max: 1
-    grid: { x: 0, y: 4, w: 8, h: 6 }
+    grid: { x: 0, y: 4, w: 12, h: 7 }
     thresholds:
       - color: red
       - value: 0.8
@@ -104,10 +106,32 @@ widgets:
       # old merged/(merged+failed) "pr delivery" proxy gauge.
       - expr: sum(pilot_ci_runs_total{result="pass"}) / (sum(pilot_ci_runs_total) > 0)
 
+  # Four same-unit series overlaid (first fills as area, later ones draw as
+  # lines). 1h windows: each point is the mean over events in that hour; gaps
+  # mean no activity in the stage. queue wait → time to pr → approval wait →
+  # time to merge is the full issue lifecycle; whichever line inflates names
+  # the drifting stage. Half-width here (was full-width) — the tradeoff for
+  # sitting beside the ci gauge; the legend header truncates sooner.
+  - type: timeseries
+    title: pipeline latency (1h p50)
+    unit: s
+    grid: { x: 12, y: 4, w: 12, h: 7 }
+    queries:
+      # Medians, not means: queue_wait carries multi-day outliers (observed
+      # 190h backfilled samples) that make a mean chart unreadable.
+      - expr: histogram_quantile(0.50, sum(rate(pilot_queue_wait_seconds_bucket[1h])) by (le))
+        legend: queue wait
+      - expr: histogram_quantile(0.50, sum(rate(pilot_time_to_pr_seconds_bucket[1h])) by (le))
+        legend: to pr
+      - expr: histogram_quantile(0.50, sum(rate(pilot_approval_wait_seconds_bucket[1h])) by (le))
+        legend: approval wait
+      - expr: histogram_quantile(0.50, sum(rate(pilot_pr_time_to_merge_seconds_bucket[1h])) by (le))
+        legend: to merge
+
   - type: bargauge
     title: success by model
     unit: percentunit
-    grid: { x: 8, y: 4, w: 8, h: 6 }
+    grid: { x: 0, y: 11, w: 12, h: 7 }
     queries:
       # Per-attempt success share per model — the scoring drift view: a model
       # whose bar sags after a version bump or prompt change is regressing.
@@ -122,7 +146,7 @@ widgets:
   - type: bargauge
     title: cost by model
     unit: currencyUSD
-    grid: { x: 16, y: 4, w: 8, h: 6 }
+    grid: { x: 12, y: 11, w: 12, h: 7 }
     queries:
       # Same `> 20 execs` gate as "success by model": drop dead-experiment
       # models (glm-5.1, claude-opus-4-7[1m]) so the spend view lists only the
@@ -130,28 +154,7 @@ widgets:
       - expr: sum(pilot_execution_cost_usd_total) by (model) and on(model) (sum by (model)(pilot_executions_total) > 20)
         legend: "{{model}}"
 
-  # Row 3 — the pipeline, end to end. Four same-unit series overlaid (first
-  # fills as area, later ones draw as lines). 1h windows: each point is the
-  # mean over events in that hour; gaps mean no activity in the stage.
-  # queue wait → time to pr → approval wait → time to merge is the full
-  # issue lifecycle; whichever line inflates names the drifting stage.
-  - type: timeseries
-    title: pipeline latency (1h p50)
-    unit: s
-    grid: { x: 0, y: 10, w: 24, h: 8 }
-    queries:
-      # Medians, not means: queue_wait carries multi-day outliers (observed
-      # 190h backfilled samples) that make a mean chart unreadable.
-      - expr: histogram_quantile(0.50, sum(rate(pilot_queue_wait_seconds_bucket[1h])) by (le))
-        legend: queue wait
-      - expr: histogram_quantile(0.50, sum(rate(pilot_time_to_pr_seconds_bucket[1h])) by (le))
-        legend: to pr
-      - expr: histogram_quantile(0.50, sum(rate(pilot_approval_wait_seconds_bucket[1h])) by (le))
-        legend: approval wait
-      - expr: histogram_quantile(0.50, sum(rate(pilot_pr_time_to_merge_seconds_bucket[1h])) by (le))
-        legend: to merge
-
-  # Row 4 — tokens: lifetime breakdown + burn rate.
+  # Row 3 — tokens: lifetime breakdown + burn rate.
   - type: bargauge
     title: tokens by direction
     unit: short
@@ -174,7 +177,7 @@ widgets:
       - expr: sum(max_over_time(pilot_tokens_consumed_total[5m]) - min_over_time(pilot_tokens_consumed_total[5m])) by (direction)
         legend: "{{direction}}"
 
-  # Row 5 — spend curve + outcome mix. Since pilot#4029 the cost counter is
+  # Row 4 — spend curve + outcome mix. Since pilot#4029 the cost counter is
   # lifetime (store-hydrated), so the curve is true all-time spend.
   - type: timeseries
     title: cumulative cost
@@ -197,7 +200,7 @@ widgets:
       - expr: sum(max_over_time(pilot_executions_total[1h]) - min_over_time(pilot_executions_total[1h])) by (result)
         legend: "{{result}}"
 
-  # Row 6 — right now: live pressure gauges. Process-scoped where noted.
+  # Row 5 — right now: live pressure gauges. Process-scoped where noted.
   - type: stat
     title: queue
     unit: short
@@ -251,7 +254,7 @@ widgets:
     queries:
       - expr: pilot_api_error_rate
 
-  # Row 7 — guard counters (24h deltas): each one nonzero names a specific
+  # Row 6 — guard counters (24h deltas): each one nonzero names a specific
   # failure class. All should sit at 0 on a healthy day.
   - type: stat
     title: breaker trips 24h
