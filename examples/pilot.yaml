@@ -99,7 +99,7 @@ widgets:
       - color: red
       - value: 0.8
         color: yellow
-      - value: 0.95
+      - value: 0.9
         color: green
     queries:
       # pilot_ci_runs_total{result} shipped in pilot#4134. Windowed to 30d to
