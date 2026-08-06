@@ -138,31 +138,34 @@ widgets:
         legend: to merge
 
   - type: bargauge
-    title: success by model
+    title: success by model (30d)
     unit: percentunit
     grid: { x: 0, y: 11, w: 12, h: 7 }
     queries:
-      # Per-attempt success share per model — the scoring drift view: a model
-      # whose bar sags after a version bump or prompt change is regressing.
-      # Lifetime (hydrated from the all-time ledger), so every model ever run
-      # is exported forever. The `> 20 execs` gate drops tiny-sample dead
-      # experiments that would otherwise peg the panel at a meaningless 100%
-      # (e.g. glm-5.1 = 7 execs, claude-opus-4-7[1m] = 1 exec). Raise/lower the
-      # threshold to widen or tighten the field.
-      # sort_desc() ranks the bars highest-first; grom renders instant-query
-      # series in the order Prometheus returns them.
-      - expr: sort_desc(sum(pilot_executions_total{result="success"}) by (model) / (sum(pilot_executions_total) by (model) > 0) and on(model) (sum by (model)(pilot_executions_total) > 20))
+      # Per-attempt success share per model over the last 30d — the scoring
+      # drift view: a model whose bar sags after a version bump or prompt change
+      # is regressing. Windowed with max_over_time - min_over_time (NOT
+      # increase()): pilot_executions_total is store-hydrated and dips on
+      # restart, which increase() would misread as resets and re-add the base.
+      # The `> 20 execs` gate (also windowed) drops tiny-sample noise. NOTE:
+      # the fleet has effectively consolidated to one model in the last 30d, so
+      # this currently renders a single bar; more bars return automatically when
+      # other models run again in-window. sort_desc() ranks highest-first (grom
+      # renders instant-query series in Prometheus's returned order).
+      - expr: sort_desc(sum(max_over_time(pilot_executions_total{result="success"}[30d]) - min_over_time(pilot_executions_total{result="success"}[30d])) by (model) / (sum(max_over_time(pilot_executions_total[30d]) - min_over_time(pilot_executions_total[30d])) by (model) > 0) and on(model) (sum by (model)(max_over_time(pilot_executions_total[30d]) - min_over_time(pilot_executions_total[30d])) > 20))
         legend: "{{model}}"
 
   - type: bargauge
-    title: cost by model
+    title: cost by model (30d)
     unit: currencyUSD
     grid: { x: 12, y: 11, w: 12, h: 7 }
     queries:
-      # Same `> 20 execs` gate as "success by model": drop dead-experiment
-      # models (glm-5.1, claude-opus-4-7[1m]) so the spend view lists only the
-      # real fleet.
-      - expr: sort_desc(sum(pilot_execution_cost_usd_total) by (model) and on(model) (sum by (model)(pilot_executions_total) > 20))
+      # Per-model spend over the last 30d, windowed with max_over_time -
+      # min_over_time (pilot_execution_cost_usd_total is store-hydrated since
+      # pilot#4029; increase() would re-add the base on restart dips). Same
+      # windowed `> 20 execs` gate as "success by model" — currently one bar
+      # (single-model fleet in-window), repopulates when others run again.
+      - expr: sort_desc(sum(max_over_time(pilot_execution_cost_usd_total[30d]) - min_over_time(pilot_execution_cost_usd_total[30d])) by (model) and on(model) (sum by (model)(max_over_time(pilot_executions_total[30d]) - min_over_time(pilot_executions_total[30d])) > 20))
         legend: "{{model}}"
 
   # Row 3 — tokens: lifetime breakdown + burn rate.
