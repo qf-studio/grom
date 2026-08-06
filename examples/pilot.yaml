@@ -140,7 +140,9 @@ widgets:
       # experiments that would otherwise peg the panel at a meaningless 100%
       # (e.g. glm-5.1 = 7 execs, claude-opus-4-7[1m] = 1 exec). Raise/lower the
       # threshold to widen or tighten the field.
-      - expr: sum(pilot_executions_total{result="success"}) by (model) / (sum(pilot_executions_total) by (model) > 0) and on(model) (sum by (model)(pilot_executions_total) > 20)
+      # sort_desc() ranks the bars highest-first; grom renders instant-query
+      # series in the order Prometheus returns them.
+      - expr: sort_desc(sum(pilot_executions_total{result="success"}) by (model) / (sum(pilot_executions_total) by (model) > 0) and on(model) (sum by (model)(pilot_executions_total) > 20))
         legend: "{{model}}"
 
   - type: bargauge
@@ -151,7 +153,7 @@ widgets:
       # Same `> 20 execs` gate as "success by model": drop dead-experiment
       # models (glm-5.1, claude-opus-4-7[1m]) so the spend view lists only the
       # real fleet.
-      - expr: sum(pilot_execution_cost_usd_total) by (model) and on(model) (sum by (model)(pilot_executions_total) > 20)
+      - expr: sort_desc(sum(pilot_execution_cost_usd_total) by (model) and on(model) (sum by (model)(pilot_executions_total) > 20))
         legend: "{{model}}"
 
   # Row 3 — tokens: lifetime breakdown + burn rate.
