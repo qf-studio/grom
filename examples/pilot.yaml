@@ -90,7 +90,7 @@ widgets:
   #   ci pass rate      | pipeline latency
   #   success by model  | cost by model
   - type: gauge
-    title: ci pass rate
+    title: ci pass rate (30d)
     unit: percentunit
     min: 0
     max: 1
@@ -102,9 +102,18 @@ widgets:
       - value: 0.95
         color: green
     queries:
-      # pilot_ci_runs_total{result} shipped in pilot#4134 — this replaces the
-      # old merged/(merged+failed) "pr delivery" proxy gauge.
-      - expr: sum(pilot_ci_runs_total{result="pass"}) / (sum(pilot_ci_runs_total) > 0)
+      # pilot_ci_runs_total{result} shipped in pilot#4134. Windowed to 30d to
+      # match the delivery-rate card. Unlike delivery rate, Pilot exposes NO
+      # server-computed CI window gauge (the pilot_window_* family is
+      # delivery/attempt/cost only), so this is a client-side window using
+      # max_over_time - min_over_time, NOT increase(): pilot_ci_runs_total is
+      # store-hydrated and dips on restart (5 resets/30d, min never reaches 0),
+      # so increase() reads each hydration dip as a reset and re-adds the base,
+      # inflating the ratio (96.3% vs the honest 94.8%). max-min never adds the
+      # base; worst case it undercounts a restart-straddling window. See the
+      # prs/3h card note. For true parity with delivery rate, Pilot would need a
+      # pilot_window_ci_pass_rate gauge (dispatch, cf. pilot#4735).
+      - expr: sum(max_over_time(pilot_ci_runs_total{result="pass"}[30d]) - min_over_time(pilot_ci_runs_total{result="pass"}[30d])) / (sum(max_over_time(pilot_ci_runs_total[30d]) - min_over_time(pilot_ci_runs_total[30d])) > 0)
 
   # Four same-unit series overlaid (first fills as area, later ones draw as
   # lines). 1h windows: each point is the mean over events in that hour; gaps
