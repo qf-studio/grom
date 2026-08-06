@@ -29,10 +29,13 @@ widgets:
       # which is lifetime and era-blends models — it reads ~0.799 forever
       # while the honest last-30d figure is ~0.81 on a 5x costlier model mix.
       # No {window=} matcher on purpose: the label value follows the daemon's
-      # stats_window_days knob. A hard 0 here means "daemon predates the
-      # pilot#4739 aggregate fix" (first train ≥ 2026-08-06), not "nothing
-      # shipped" — the pre-fix aggregate served window="0d" 0.
-      - expr: pilot_window_delivery_rate
+      # stats_window_days knob. max() collapses label churn: when the window
+      # label changes (0d→30d after the pilot#4739 fix, or a knob change),
+      # the old label value lingers as a dead sibling series for the rest of
+      # the chart range — a bare selector returns both and the stat card can
+      # pick the dead one's 0. A hard 0 here means "daemon predates the
+      # pilot#4739 aggregate fix", not "nothing shipped".
+      - expr: max(pilot_window_delivery_rate)
 
   - type: stat
     title: cost / shipped (30d)
@@ -46,9 +49,9 @@ widgets:
       # canary-excluded population — replaces the lifetime sum/sum proxy,
       # which era-blends models (read ~$0.80 while the honest last-30d figure
       # is ~$3.66). Gauge refreshes on a 5-min daemon ticker, not per-scrape.
-      # 0 until the daemon carries the pilot#4739 aggregate fix (see the
-      # delivery-rate card note).
-      - expr: pilot_window_cost_per_delivered_usd
+      # 0 until the daemon carries the pilot#4739 aggregate fix. max()
+      # collapses window-label churn (see the delivery-rate card note).
+      - expr: max(pilot_window_cost_per_delivered_usd)
 
   - type: stat
     title: prs / 3h
