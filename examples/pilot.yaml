@@ -111,10 +111,12 @@ widgets:
     queries:
       # Per-attempt success share per model — the scoring drift view: a model
       # whose bar sags after a version bump or prompt change is regressing.
-      # NOTE: lifetime (hydrated from the all-time ledger) — retired models
-      # appear legitimately: glm-5.1 = 7 execs 2026-04-12..14 (OpenRouter
-      # experiment), claude-opus-4-7[1m] = 1 exec (1M-context trial).
-      - expr: sum(pilot_executions_total{result="success"}) by (model) / (sum(pilot_executions_total) by (model) > 0)
+      # Lifetime (hydrated from the all-time ledger), so every model ever run
+      # is exported forever. The `> 20 execs` gate drops tiny-sample dead
+      # experiments that would otherwise peg the panel at a meaningless 100%
+      # (e.g. glm-5.1 = 7 execs, claude-opus-4-7[1m] = 1 exec). Raise/lower the
+      # threshold to widen or tighten the field.
+      - expr: sum(pilot_executions_total{result="success"}) by (model) / (sum(pilot_executions_total) by (model) > 0) and on(model) (sum by (model)(pilot_executions_total) > 20)
         legend: "{{model}}"
 
   - type: bargauge
