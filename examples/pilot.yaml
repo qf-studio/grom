@@ -124,7 +124,10 @@ widgets:
     unit: currencyUSD
     grid: { x: 16, y: 4, w: 8, h: 6 }
     queries:
-      - expr: sum(pilot_execution_cost_usd_total) by (model)
+      # Same `> 20 execs` gate as "success by model": drop dead-experiment
+      # models (glm-5.1, claude-opus-4-7[1m]) so the spend view lists only the
+      # real fleet.
+      - expr: sum(pilot_execution_cost_usd_total) by (model) and on(model) (sum by (model)(pilot_executions_total) > 20)
         legend: "{{model}}"
 
   # Row 3 — the pipeline, end to end. Four same-unit series overlaid (first
