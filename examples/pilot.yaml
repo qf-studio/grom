@@ -3,7 +3,7 @@
 # → tokens/cost → guard counters. Every panel is verified against the live
 # metric set (2026-07-16; headline cards re-verified 2026-08-05 against the
 # pilot#4735 rolling-window gauges); comments note upstream data caveats.
-# Run: grom run --config examples/pilot.yaml --prom http://localhost:9093
+# Run: grom run --config examples/pilot.yaml --prom http://localhost:9092
 title: pilot
 theme: pilot
 refresh: 10s
